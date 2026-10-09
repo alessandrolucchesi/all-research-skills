@@ -24,6 +24,6 @@ out/
 # Third-party asset caches. The registry stores metadata only: this
 # repository must never redistribute assets it does not own, and a cached
 # icon index or downloaded SVG committed by accident would do exactly that.
-assets/cache/
-assets/downloaded/
+**/assets/cache/
+**/assets/downloaded/
 *.cache.json
