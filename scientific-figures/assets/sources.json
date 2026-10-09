@@ -1,0 +1,194 @@
+{
+  "registry_version": "0.1",
+  "updated": "2026-10-10",
+  "purpose": "Machine readable registry of open asset sources for scientific figure composition. Every pictorial asset used by the skill must resolve to an entry in this file. An asset with no entry is refused, not guessed.",
+
+  "license_gate": {
+    "targets": {
+      "oa_cc_by": {
+        "description": "Open access article published under CC BY 4.0 (most OA journals, Plan S compliant venues).",
+        "allow": ["PD", "CC0", "MIT", "BSD", "CC-BY-3.0", "CC-BY-4.0"],
+        "deny": ["CC-BY-SA", "CC-BY-NC", "CC-BY-NC-SA", "CC-BY-ND", "CC-BY-NC-ND", "proprietary"]
+      },
+      "subscription": {
+        "description": "Subscription or hybrid article, author retains no CC licence obligation.",
+        "allow": ["PD", "CC0", "MIT", "BSD", "CC-BY-3.0", "CC-BY-4.0"],
+        "review": ["CC-BY-NC", "CC-BY-NC-SA"],
+        "deny": ["CC-BY-ND", "CC-BY-NC-ND", "CC-BY-SA", "proprietary"]
+      },
+      "internal": {
+        "description": "Slides, teaching, grant applications, internal reports. Not a publication.",
+        "allow": ["PD", "CC0", "MIT", "BSD", "CC-BY-3.0", "CC-BY-4.0", "CC-BY-NC", "CC-BY-NC-SA", "CC-BY-SA"],
+        "deny": ["proprietary"]
+      }
+    },
+    "rationale": {
+      "ND": "Placing an asset inside a composite figure, recolouring it or cropping it produces a derivative work. No-derivatives assets can therefore never be used in a figure, in any venue.",
+      "SA": "Share-alike propagates to the whole composite. The derived figure would have to be released under the same licence, which conflicts with most publishing agreements.",
+      "NC": "Non-commercial is incompatible with the CC BY licence that open access journals apply to the whole article. In subscription venues it requires an explicit check of the publishing agreement before use.",
+      "proprietary": "Requires named written permission from the rights holder before submission."
+    },
+    "enforcement": "The gate runs before rendering. A figure containing a denied asset does not compile. Assets in 'review' compile only with an explicit override flag recorded in the spec provenance block."
+  },
+
+  "sources": [
+    {
+      "id": "nih-bioart",
+      "name": "NIH BioArt Source (NIAID)",
+      "url": "https://bioart.niaid.nih.gov/",
+      "license_model": "per_item",
+      "licenses": ["PD", "CC-BY-4.0", "CC-BY-SA", "CC-BY-ND", "CC-BY-NC", "CC-BY-NC-SA", "CC-BY-NC-ND"],
+      "formats": ["SVG", "AI", "EPS", "PNG"],
+      "access": "http_page",
+      "approximate_size": 2000,
+      "domains": ["anatomy", "cells", "organelles", "viruses", "bacteria", "arthropods", "proteins", "molecules", "equipment", "people", "plants", "animals"],
+      "attribution_template": "Illustration from NIAID NIH BIOART Source (bioart.niaid.nih.gov/bioart/{asset_id}).",
+      "gate": "per_item_check_required",
+      "notes": "Drawn by professional medical illustrators, highest anatomical reliability of the open sources. Free for any use including commercial, but the licence varies per entry and the site exposes a licence filter. Never treat the library as uniformly public domain."
+    },
+    {
+      "id": "servier-smart",
+      "name": "Servier Medical Art (SMART)",
+      "url": "https://smart.servier.com/",
+      "license_model": "uniform",
+      "licenses": ["CC-BY-4.0"],
+      "formats": ["PNG", "PPTX"],
+      "access": "http_page",
+      "approximate_size": 3000,
+      "domains": ["human anatomy", "pathology", "cellular biology", "medical specialties", "physiological processes", "people"],
+      "attribution_template": "Adapted from Servier Medical Art by Servier, licensed under CC BY 4.0.",
+      "gate": "allow",
+      "notes": "Widest clinical coverage and a single uniform licence, which makes gating trivial. Technical limitation: the site serves raster and PowerPoint, not native SVG, so assets need vectorisation or must be confined to raster layers. Prefer an equivalent vector asset from another source when one exists."
+    },
+    {
+      "id": "bioicons",
+      "name": "Bioicons",
+      "url": "https://bioicons.com/",
+      "license_model": "per_item",
+      "licenses": ["CC0", "MIT", "CC-BY-SA", "BSD", "CC-BY-4.0"],
+      "formats": ["SVG"],
+      "access": "json_index",
+      "index_url": "https://raw.githubusercontent.com/duerrsimon/bioicons/main/static/icons/icons.json",
+      "approximate_size": 2800,
+      "domains": ["blood and immunology", "cell membrane", "chemistry", "genetics", "human physiology", "intracellular components", "lab apparatus", "microbiology", "nucleic acids", "oncology", "receptors and channels", "tissues", "viruses"],
+      "attribution_template": "Icon by {author}, Bioicons, licensed under {license}.",
+      "gate": "per_item_check_required",
+      "notes": "Primary programmatic source. The licence is encoded in the icon identifier itself (pattern: bioicons${license}${category}${author}${name}), so the gate can be applied without a network call once the index is cached. Watch for CC-BY-SA items, which the gate denies for publication targets."
+    },
+    {
+      "id": "health-icons",
+      "name": "Health Icons",
+      "url": "https://healthicons.org/",
+      "license_model": "uniform",
+      "licenses": ["CC0"],
+      "formats": ["SVG", "PNG"],
+      "access": "bulk_download",
+      "domains": ["anatomy", "devices", "symptoms", "public health", "medications", "people"],
+      "attribution_template": null,
+      "gate": "allow",
+      "notes": "Uniform CC0 and a consistent visual style. Best default for clinical pictograms and for algorithm nodes. No attribution required, which keeps composite figures legally clean."
+    },
+    {
+      "id": "scidraw",
+      "name": "SciDraw",
+      "url": "https://scidraw.io/",
+      "license_model": "per_item",
+      "licenses": ["CC0", "CC-BY-4.0", "CC-BY-NC", "CC-BY-SA"],
+      "formats": ["SVG"],
+      "access": "http_page",
+      "domains": ["animals", "experimental setups", "lab equipment", "neuroscience"],
+      "attribution_template": "Drawing by {author}, SciDraw, licensed under {license}.",
+      "gate": "per_item_check_required",
+      "notes": "Strongest for experimental setup and animal model panels. No login required for download."
+    },
+    {
+      "id": "open-science-art",
+      "name": "Open Science Art",
+      "url": "https://openscienceart.com/",
+      "license_model": "per_item",
+      "licenses": ["CC0", "CC-BY-4.0"],
+      "formats": ["SVG", "PNG", "3D"],
+      "domains": ["icons", "illustrations", "molecular models"],
+      "access": "http_page",
+      "gate": "per_item_check_required",
+      "notes": "Mixed catalogue of flat icons, detailed illustrations and 3D molecular models."
+    },
+    {
+      "id": "phylopic",
+      "name": "PhyloPic",
+      "url": "https://www.phylopic.org/",
+      "license_model": "per_item",
+      "licenses": ["PD", "CC0", "CC-BY-3.0", "CC-BY-SA", "CC-BY-NC"],
+      "formats": ["SVG", "PNG"],
+      "access": "rest_api",
+      "index_url": "https://api.phylopic.org",
+      "domains": ["organism silhouettes", "model organisms"],
+      "attribution_template": "Silhouette by {author}, PhyloPic, licensed under {license}.",
+      "gate": "per_item_check_required",
+      "notes": "Only source with a true public REST API, queryable by taxon name. Use for model organism and species marks in comparative panels."
+    },
+    {
+      "id": "reactome",
+      "name": "Reactome",
+      "url": "https://reactome.org/",
+      "license_model": "split",
+      "licenses": {
+        "data": "CC0",
+        "content_and_illustrations": "CC-BY-4.0",
+        "software": "Apache-2.0"
+      },
+      "formats": ["SVG", "PNG", "SBGN", "BioPAX"],
+      "access": "rest_api",
+      "domains": ["curated human pathways"],
+      "attribution_template": "Pathway content from Reactome, licensed under CC BY 4.0.",
+      "gate": "allow",
+      "notes": "Pathway illustrations, the icon library and branding materials are CC BY 4.0; the underlying data is CC0. Preferred source for canonical pathway topology."
+    },
+    {
+      "id": "wikipathways",
+      "name": "WikiPathways",
+      "url": "https://www.wikipathways.org/",
+      "license_model": "uniform",
+      "licenses": ["CC0"],
+      "formats": ["GPML", "SVG", "PNG"],
+      "access": "rest_api",
+      "domains": ["community curated pathways"],
+      "attribution_template": null,
+      "gate": "allow",
+      "notes": "Entirely CC0, therefore the lowest friction source for pathway topology that will be redrawn in the house lexicon. Attribution is courteous but not required."
+    },
+    {
+      "id": "kegg",
+      "name": "KEGG pathway maps",
+      "url": "https://www.kegg.jp/",
+      "license_model": "proprietary",
+      "licenses": ["proprietary"],
+      "formats": ["PNG", "KGML"],
+      "access": "rest_api",
+      "gate": "deny",
+      "notes": "Map images are copyright Kanehisa Laboratories and publishers require a named written permission identifying each map by code, conditional on citing a KEGG paper. The restriction also covers figures generated by pathview, clusterProfiler and similar packages, which carry the mark. The skill never embeds a KEGG map; it may use KGML topology as input to a redrawn figure, with the redraw declared."
+    },
+    {
+      "id": "biorender",
+      "name": "BioRender",
+      "url": "https://www.biorender.com/",
+      "license_model": "proprietary",
+      "licenses": ["proprietary"],
+      "formats": ["PNG", "PDF", "SVG"],
+      "access": "mcp_connector",
+      "gate": "external",
+      "notes": "Out of the open asset pipeline. Free plan figures carry no publication rights; only paid plans generate a publication licence with a unique citation of the form 'Created in BioRender. Author (year) URL', with a combined CC BY 4.0 variant for open access. Usable as an optional external path, never as a dependency of the skill."
+    }
+  ],
+
+  "resolution_order": [
+    "health-icons",
+    "bioicons",
+    "nih-bioart",
+    "scidraw",
+    "open-science-art",
+    "phylopic",
+    "servier-smart"
+  ],
+  "resolution_note": "Ordered by licence cleanliness first and vector availability second, not by catalogue size. Servier is last despite its coverage because it serves raster only. Reactome and WikiPathways are not in this order because they supply topology, not pictorial assets."
+}

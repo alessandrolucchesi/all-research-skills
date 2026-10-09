@@ -1,0 +1,170 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.org/scientific-figures/figure-spec.schema.json",
+  "title": "figure-spec",
+  "description": "Intermediate representation for a scientific schematic figure. Content, not layout. One source compiles to the journal variant, the slide variant and the thumbnail. Accepted as JSON or YAML.",
+  "type": "object",
+  "required": ["meta", "entities", "relations"],
+  "additionalProperties": false,
+
+  "properties": {
+    "meta": {
+      "type": "object",
+      "required": ["title", "band", "figure_class", "target", "claim"],
+      "additionalProperties": false,
+      "properties": {
+        "title": { "type": "string" },
+        "band": { "enum": ["A", "B", "C"], "description": "Normative band, see references/01-figure-taxonomy.md" },
+        "figure_class": {
+          "enum": [
+            "consort_flow", "prisma_flow", "stard_flow", "sbgn_pathway",
+            "mechanism_of_action", "pathway_curated", "pathway_data_derived",
+            "study_design", "clinical_algorithm",
+            "graphical_abstract", "conceptual_model"
+          ]
+        },
+        "target": {
+          "enum": ["oa_cc_by", "subscription", "internal"],
+          "description": "Drives the licence gate in assets/sources.json"
+        },
+        "journal": { "type": "string", "description": "Target journal or publisher preset, drives dimensions and type size" },
+        "claim": {
+          "type": "string",
+          "description": "One sentence stating what the figure asserts. Mandatory. If it cannot be written, the figure is not ready to be drawn."
+        },
+        "accent_colour": { "type": "string", "default": "#0b6ea8" },
+        "variants": {
+          "type": "array",
+          "items": { "enum": ["journal", "slide", "thumbnail"] },
+          "default": ["journal"]
+        }
+      }
+    },
+
+    "compartments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "type"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "type": { "enum": ["physical", "conceptual"] },
+          "parent": { "type": "string", "description": "Enclosing compartment id. Hierarchy by nesting, never by colour." }
+        }
+      }
+    },
+
+    "entities": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "label", "class"],
+        "additionalProperties": false,
+        "properties": {
+          "id": { "type": "string" },
+          "label": { "type": "string" },
+          "class": {
+            "enum": ["macromolecule", "nucleic_acid", "small_molecule", "complex", "unspecified", "cell", "tissue", "organ", "subject", "process"]
+          },
+          "compartment": { "type": "string" },
+          "components": { "type": "array", "items": { "type": "string" }, "description": "For class complex: ids of enclosed entities" },
+          "state": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "required": ["label"],
+              "properties": { "label": { "type": "string" }, "active": { "type": "boolean" } }
+            },
+            "description": "State variables rendered on the entity border, e.g. P, Ub, Ac"
+          },
+          "role": { "enum": ["canonical", "contribution"], "default": "canonical" },
+          "asset": { "$ref": "#/$defs/asset" },
+          "human_attributes": {
+            "type": "object",
+            "description": "Required when class is subject and a human pictogram is used. Explicit by design: icon libraries inherit their authors' defaults.",
+            "properties": {
+              "skin_tone": { "type": "string" },
+              "sex_presentation": { "type": "string" },
+              "body_size": { "type": "string" },
+              "age_group": { "type": "string" }
+            }
+          },
+          "count": { "type": "integer", "description": "Band A only: participant count at this node" }
+        }
+      }
+    },
+
+    "relations": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["from", "to", "type", "evidence"],
+        "additionalProperties": false,
+        "properties": {
+          "from": { "type": "string" },
+          "to": { "type": "string" },
+          "type": {
+            "enum": ["production", "stimulation", "catalysis", "inhibition", "transport", "binding", "flow"]
+          },
+          "evidence": {
+            "enum": ["established", "demonstrated_here", "associated", "hypothesized"],
+            "description": "Mandatory. The compiler refuses to render a relation without it."
+          },
+          "source": {
+            "type": "string",
+            "description": "DOI, PMID or the literal 'this work'. Required unless evidence is demonstrated_here."
+          },
+          "role": { "enum": ["canonical", "contribution"], "default": "canonical" },
+          "label": { "type": "string" },
+          "modifier": { "type": "string", "description": "Entity id acting as catalyst or modulator on this relation" }
+        },
+        "allOf": [
+          {
+            "if": { "properties": { "evidence": { "enum": ["established", "associated", "hypothesized"] } } },
+            "then": { "required": ["source"] }
+          }
+        ]
+      }
+    },
+
+    "provenance": {
+      "type": "object",
+      "description": "Written by the asset resolver, not by hand. Drives the attribution block.",
+      "properties": {
+        "assets": { "type": "array", "items": { "$ref": "#/$defs/asset" } },
+        "gate_overrides": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["asset_id", "reason", "approved_by"],
+            "properties": {
+              "asset_id": { "type": "string" },
+              "reason": { "type": "string" },
+              "approved_by": { "type": "string" }
+            }
+          },
+          "description": "Only for assets the gate marks 'review'. Denied licences are never overridable."
+        },
+        "ai_disclosure": { "type": "string", "description": "Generated for the target publisher on request" }
+      }
+    }
+  },
+
+  "$defs": {
+    "asset": {
+      "type": "object",
+      "required": ["source_id", "asset_id", "license"],
+      "properties": {
+        "source_id": { "type": "string", "description": "Key from assets/sources.json" },
+        "asset_id": { "type": "string" },
+        "author": { "type": "string" },
+        "license": { "type": "string" },
+        "url": { "type": "string" },
+        "attribution": { "type": "string", "description": "Rendered from the source attribution_template" }
+      }
+    }
+  }
+}

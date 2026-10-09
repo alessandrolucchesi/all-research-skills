@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
+build/
+dist/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Compiled figures. Generated output does not belong in version control;
+# the one committed example under examples/ is the exception and is
+# force-added deliberately.
+*.journal.svg
+*.slide.svg
+*.thumbnail.svg
+out/
+!**/examples/*.journal.svg
+
+# Third-party asset caches. The registry stores metadata only: this
+# repository must never redistribute assets it does not own, and a cached
+# icon index or downloaded SVG committed by accident would do exactly that.
+assets/cache/
+assets/downloaded/
+*.cache.json

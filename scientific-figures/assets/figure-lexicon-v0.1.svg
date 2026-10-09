@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 860 1470" width="860" height="1470" font-family="Helvetica, Arial, sans-serif">
+  <rect x="0" y="0" width="860" height="1470" fill="#ffffff"/>
+
+  <text x="40" y="46" font-size="22" font-weight="600" fill="#1a1a1a">Figure Lexicon v0.1</text>
+  <text x="40" y="70" font-size="13.5" fill="#666666">Reference plate for the scientific figure skill. One visual channel per semantic dimension: terminal glyph encodes relation type, stroke pattern encodes evidence level, colour weight encodes narrative role.</text>
+
+  <!-- SECTION A -->
+  <text x="40" y="112" font-size="16" font-weight="600" fill="#1a1a1a">A. Relation type (terminal glyph)</text>
+  <line x1="40" y1="122" x2="820" y2="122" stroke="#dddddd" stroke-width="1"/>
+
+  <!-- production -->
+  <line x1="48" y1="152" x2="157" y2="152" stroke="#1a1a1a" stroke-width="2"/>
+  <path d="M170,152 L156,146 L156,158 Z" fill="#1a1a1a"/>
+  <text x="230" y="148" font-size="15" fill="#1a1a1a">Production / conversion</text>
+  <text x="230" y="165" font-size="12.5" fill="#777777">A becomes B. Filled triangular head.</text>
+
+  <!-- stimulation -->
+  <line x1="48" y1="198" x2="166" y2="198" stroke="#1a1a1a" stroke-width="2"/>
+  <path d="M157,191 L170,198 L157,205" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="230" y="194" font-size="15" fill="#1a1a1a">Stimulation / activation</text>
+  <text x="230" y="211" font-size="12.5" fill="#777777">Non catalytic positive influence. Open V head.</text>
+
+  <!-- catalysis -->
+  <line x1="48" y1="244" x2="158" y2="244" stroke="#1a1a1a" stroke-width="2"/>
+  <circle cx="164" cy="244" r="6.5" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  <text x="230" y="240" font-size="15" fill="#1a1a1a">Catalysis</text>
+  <text x="230" y="257" font-size="12.5" fill="#777777">Enzymatic action on a process. Open circle terminal.</text>
+
+  <!-- inhibition -->
+  <line x1="48" y1="290" x2="166" y2="290" stroke="#1a1a1a" stroke-width="2"/>
+  <line x1="167" y1="281" x2="167" y2="299" stroke="#1a1a1a" stroke-width="2.4" stroke-linecap="round"/>
+  <text x="230" y="286" font-size="15" fill="#1a1a1a">Inhibition</text>
+  <text x="230" y="303" font-size="12.5" fill="#777777">Perpendicular bar. Never an arrow with a minus sign.</text>
+
+  <!-- transport -->
+  <line x1="104" y1="322" x2="104" y2="358" stroke="#8aa9bb" stroke-width="5" stroke-linecap="round"/>
+  <line x1="48" y1="336" x2="164" y2="336" stroke="#1a1a1a" stroke-width="1.2"/>
+  <path d="M158,331 L170,336 L158,341" fill="none" stroke="#1a1a1a" stroke-width="1.2" stroke-linejoin="round"/>
+  <text x="230" y="332" font-size="15" fill="#1a1a1a">Transport / translocation</text>
+  <text x="230" y="349" font-size="12.5" fill="#777777">Thin stroke, open head, crossing a compartment boundary.</text>
+
+  <!-- binding -->
+  <line x1="48" y1="382" x2="150" y2="382" stroke="#1a1a1a" stroke-width="2"/>
+  <rect x="150" y="370" width="24" height="24" rx="5" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  <text x="230" y="378" font-size="15" fill="#1a1a1a">Binding / complex formation</text>
+  <text x="230" y="395" font-size="12.5" fill="#777777">No terminal glyph. The line enters the complex container.</text>
+
+  <!-- process flow -->
+  <path d="M48,418 L110,418 L110,436 L157,436" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-linejoin="miter"/>
+  <path d="M170,436 L156,430 L156,442 Z" fill="#1a1a1a"/>
+  <text x="230" y="424" font-size="15" fill="#1a1a1a">Procedural flow</text>
+  <text x="230" y="441" font-size="12.5" fill="#777777">Orthogonal polyline, sharp corners. Reserved for algorithms and study designs; biological relations use curves.</text>
+
+  <!-- SECTION B -->
+  <text x="40" y="498" font-size="16" font-weight="600" fill="#1a1a1a">B. Evidence level (stroke pattern)</text>
+  <line x1="40" y1="508" x2="820" y2="508" stroke="#dddddd" stroke-width="1"/>
+
+  <line x1="48" y1="538" x2="157" y2="538" stroke="#1a1a1a" stroke-width="2"/>
+  <path d="M170,538 L156,532 L156,544 Z" fill="#1a1a1a"/>
+  <text x="230" y="534" font-size="15" fill="#1a1a1a">Established or demonstrated here</text>
+  <text x="230" y="551" font-size="12.5" fill="#777777">Solid stroke. evidence: established | demonstrated_here</text>
+
+  <line x1="48" y1="584" x2="157" y2="584" stroke="#1a1a1a" stroke-width="2" stroke-dasharray="11 6"/>
+  <path d="M170,584 L156,578 L156,590 Z" fill="#1a1a1a"/>
+  <text x="230" y="580" font-size="15" fill="#1a1a1a">Associated, causality not shown</text>
+  <text x="230" y="597" font-size="12.5" fill="#777777">Long dash. evidence: associated</text>
+
+  <line x1="48" y1="630" x2="157" y2="630" stroke="#1a1a1a" stroke-width="2" stroke-dasharray="2 5" stroke-linecap="round"/>
+  <path d="M170,630 L156,624 L156,636 Z" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.6"/>
+  <text x="230" y="626" font-size="15" fill="#1a1a1a">Hypothesised or inferred</text>
+  <text x="230" y="643" font-size="12.5" fill="#777777">Dotted stroke, unfilled head. evidence: hypothesized</text>
+
+  <!-- SECTION C -->
+  <text x="40" y="690" font-size="16" font-weight="600" fill="#1a1a1a">C. Narrative role (colour weight)</text>
+  <line x1="40" y1="700" x2="820" y2="700" stroke="#dddddd" stroke-width="1"/>
+
+  <line x1="48" y1="730" x2="157" y2="730" stroke="#9a9a9a" stroke-width="1.6"/>
+  <path d="M170,730 L156,724.5 L156,735.5 Z" fill="#9a9a9a"/>
+  <text x="230" y="726" font-size="15" fill="#1a1a1a">Canonical background</text>
+  <text x="230" y="743" font-size="12.5" fill="#777777">Neutral grey, reduced weight. Known biology.</text>
+
+  <line x1="48" y1="776" x2="156" y2="776" stroke="#0b6ea8" stroke-width="3"/>
+  <path d="M171,776 L155,769 L155,783 Z" fill="#0b6ea8"/>
+  <text x="230" y="772" font-size="15" fill="#1a1a1a">Contribution of this work</text>
+  <text x="230" y="789" font-size="12.5" fill="#777777">Single accent colour per figure, increased weight. Blue and orange pair chosen for deuteranopia safety.</text>
+
+  <!-- SECTION D -->
+  <text x="40" y="836" font-size="16" font-weight="600" fill="#1a1a1a">D. Entity glyphs</text>
+  <line x1="40" y1="846" x2="820" y2="846" stroke="#dddddd" stroke-width="1"/>
+
+  <rect x="48" y="866" width="124" height="32" rx="9" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  <text x="230" y="880" font-size="15" fill="#1a1a1a">Macromolecule (protein)</text>
+  <text x="230" y="897" font-size="12.5" fill="#777777">Rounded rectangle.</text>
+
+  <path d="M48,922 h124 v16 a11,11 0 0 1 -11,11 h-102 a11,11 0 0 1 -11,-11 z" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  <text x="230" y="936" font-size="15" fill="#1a1a1a">Nucleic acid feature</text>
+  <text x="230" y="953" font-size="12.5" fill="#777777">Lower corners rounded only.</text>
+
+  <rect x="48" y="978" width="124" height="32" rx="16" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  <text x="230" y="992" font-size="15" fill="#1a1a1a">Small molecule / metabolite</text>
+  <text x="230" y="1009" font-size="12.5" fill="#777777">Stadium shape.</text>
+
+  <path d="M58,1034 h104 l10,10 v12 l-10,10 h-104 l-10,-10 v-12 z" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  <rect x="64" y="1042" width="44" height="18" rx="5" fill="#ffffff" stroke="#9a9a9a" stroke-width="1.4"/>
+  <rect x="114" y="1042" width="44" height="18" rx="5" fill="#ffffff" stroke="#9a9a9a" stroke-width="1.4"/>
+  <text x="230" y="1048" font-size="15" fill="#1a1a1a">Complex</text>
+  <text x="230" y="1065" font-size="12.5" fill="#777777">Container enclosing its components rather than naming them.</text>
+
+  <rect x="48" y="1090" width="124" height="32" rx="4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2" stroke-dasharray="6 5"/>
+  <text x="230" y="1104" font-size="15" fill="#1a1a1a">Unspecified entity</text>
+  <text x="230" y="1121" font-size="12.5" fill="#777777">Dashed outline. Use instead of guessing.</text>
+
+  <rect x="48" y="1146" width="124" height="32" rx="9" fill="#ffffff" stroke="#1a1a1a" stroke-width="2"/>
+  <circle cx="58" cy="1146" r="11" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.8"/>
+  <text x="58" y="1151" font-size="12" text-anchor="middle" fill="#1a1a1a">P</text>
+  <text x="230" y="1160" font-size="15" fill="#1a1a1a">State variable</text>
+  <text x="230" y="1177" font-size="12.5" fill="#777777">Post translational modification on the entity border.</text>
+
+  <!-- SECTION E -->
+  <text x="40" y="1224" font-size="16" font-weight="600" fill="#1a1a1a">E. Compartments</text>
+  <line x1="40" y1="1234" x2="820" y2="1234" stroke="#dddddd" stroke-width="1"/>
+
+  <rect x="48" y="1254" width="230" height="86" rx="12" fill="#eef3f7" stroke="#1a1a1a" stroke-width="2"/>
+  <text x="62" y="1276" font-size="12.5" fill="#5b7384" letter-spacing="0.6">CYTOPLASM</text>
+  <text x="310" y="1284" font-size="15" fill="#1a1a1a">Physical compartment</text>
+  <text x="310" y="1301" font-size="12.5" fill="#777777">Solid boundary, faint tint, hierarchy by nesting and never by colour. Label set top left.</text>
+
+  <rect x="48" y="1360" width="230" height="86" rx="12" fill="none" stroke="#1a1a1a" stroke-width="2" stroke-dasharray="8 6"/>
+  <text x="62" y="1382" font-size="12.5" fill="#5b7384" letter-spacing="0.6">CIRCULATION</text>
+  <text x="310" y="1390" font-size="15" fill="#1a1a1a">Conceptual compartment</text>
+  <text x="310" y="1407" font-size="12.5" fill="#777777">Dashed boundary. Microenvironment, circulation, time window.</text>
+</svg>

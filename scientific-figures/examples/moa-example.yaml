@@ -1,0 +1,127 @@
+# Worked example: mechanism of action, band B.
+# Illustrates the three semantic channels and the mandatory evidence field.
+# Content is generic and canonical; replace with the actual claim.
+
+meta:
+  title: "Receptor-driven signalling and its pharmacological interruption"
+  band: B
+  figure_class: mechanism_of_action
+  target: oa_cc_by
+  journal: "generic-oa"
+  claim: >
+    Constitutive kinase activity downstream of the receptor sustains transcriptional
+    activation; the inhibitor interrupts the chain at the kinase step, and the
+    proposed feedback from the transcriptional output back onto receptor expression
+    is inferred, not demonstrated.
+  accent_colour: "#0b6ea8"
+  variants: [journal, slide, thumbnail]
+
+compartments:
+  - id: extracellular
+    label: "Extracellular space"
+    type: physical
+  - id: cytoplasm
+    label: "Cytoplasm"
+    type: physical
+  - id: nucleus
+    label: "Nucleus"
+    type: physical
+    parent: cytoplasm
+
+entities:
+  - id: ligand
+    label: "Ligand"
+    class: small_molecule
+    compartment: extracellular
+    role: canonical
+
+  - id: receptor
+    label: "Receptor"
+    class: macromolecule
+    compartment: cytoplasm
+    role: canonical
+
+  - id: kinase
+    label: "Kinase"
+    class: macromolecule
+    compartment: cytoplasm
+    role: canonical
+    state:
+      - label: "P"
+        active: true
+
+  - id: tf
+    label: "Transcription factor"
+    class: macromolecule
+    compartment: cytoplasm
+    role: canonical
+    state:
+      - label: "P"
+        active: true
+
+  - id: tf_nuclear
+    label: "Transcription factor"
+    class: macromolecule
+    compartment: nucleus
+    role: canonical
+
+  - id: target_gene
+    label: "Target gene"
+    class: nucleic_acid
+    compartment: nucleus
+    role: canonical
+
+  - id: inhibitor
+    label: "Inhibitor"
+    class: small_molecule
+    compartment: cytoplasm
+    role: contribution
+
+relations:
+  - from: ligand
+    to: receptor
+    type: binding
+    evidence: established
+    source: "10.0000/example.receptor"
+
+  - from: receptor
+    to: kinase
+    type: stimulation
+    evidence: established
+    source: "10.0000/example.kinase"
+
+  - from: kinase
+    to: tf
+    type: catalysis
+    evidence: established
+    source: "10.0000/example.phospho"
+
+  - from: tf
+    to: tf_nuclear
+    type: transport
+    evidence: established
+    source: "10.0000/example.translocation"
+
+  - from: tf_nuclear
+    to: target_gene
+    type: stimulation
+    evidence: demonstrated_here
+    role: contribution
+
+  - from: inhibitor
+    to: kinase
+    type: inhibition
+    evidence: demonstrated_here
+    role: contribution
+
+  # Rendered dotted with an unfilled head: proposed, not tested.
+  - from: target_gene
+    to: receptor
+    type: stimulation
+    evidence: hypothesized
+    source: "this work, proposed"
+    label: "feedback"
+
+provenance:
+  assets: []
+  gate_overrides: []
