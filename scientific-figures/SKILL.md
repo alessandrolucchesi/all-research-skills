@@ -41,21 +41,34 @@ These are refusals, not preferences. Violating any of them produces a figure tha
 
 ## Asset strategy
 
-The registry in `assets/sources.json` is the single point of truth. In short: Health Icons (CC0) for clinical pictograms, Bioicons (per-item, JSON index, vector) for molecular and cellular iconography, NIH BioArt for anatomically demanding illustration, SciDraw for experimental setups, PhyloPic (REST API) for organism marks, Servier Medical Art last because it serves raster only, Reactome and WikiPathways for pathway topology rather than pictures. BioRender stays outside the pipeline as an optional external path with its own licensing.
+The registry in `assets/sources.json` is the single point of truth. Health Icons (CC0, 749 entries with curated tags) first, because no attribution obligation means no composite-level bookkeeping. Bioicons second (2804 entries; the licence is carried in the directory path, not the filename), and this is where the resolver finds most clinical subjects, since the 1373 Servier icons mirrored there are genuine vector under CC-BY-3.0. The `servier-smart` entry stays last only because the direct site serves raster. NIH BioArt, SciDraw, Open Science Art and PhyloPic have no machine index wired yet and are resolved by hand through `asset:`. Reactome and WikiPathways supply topology, not pictures. BioRender stays outside the pipeline.
 
-Cache the Bioicons index and the PhyloPic queries locally; both are designed for programmatic access and both encode licence per item, which is what makes the gate cheap to enforce.
+Two gates run on every candidate, in this order: the licence gate against `meta.target`, then a vector gate. The second is not optional. A licence-clean SVG can still wrap an embedded raster, which produces a raster island inside the drawing and fails at print resolution; the registry cannot carry the flag because it is a property of the file. The outcome is recorded as `vector: true` in provenance.
 
 ## Renderer
 
 ```
 python render/figure_render.py spec.yaml -o figure.svg --caption caption.md
+python render/figure_render.py spec.yaml --resolve-assets -o figure.svg
+python render/figure_render.py spec.yaml --strict-assets -o figure.svg
 python render/figure_render.py spec.yaml --variant slide -o slide.svg
 python render/figure_render.py spec.yaml --check
+python render/asset_resolver.py --search megakaryocyte --show-rejected
 ```
 
 Python 3.9 or later, PyYAML only if the spec is YAML. No network, no layout engine, no model: one spec always compiles to the same drawing.
 
-Three behaviours worth knowing. Nodes whose only role is to inhibit or catalyse are lifted out of the reading line and placed above their target, which is how such figures are drawn by hand and keeps the arrow from crossing whatever sits between them. Feedback arcs are routed along a clear lane below both nodes rather than across the figure. And type size is treated as a hard floor: the compiler tightens the gutters until the body type clears 6 pt at the target width, 12 pt inside a graphical abstract, and refuses the figure if tightening is not enough, telling the user to reduce the number of semantic units or split it. A figure that cannot be set legibly at column width is not a rendering problem, it is a content problem.
+Behaviours worth knowing.
+
+Nodes whose only role is to inhibit or catalyse are lifted out of the reading line and placed above their target, which is how such figures are drawn by hand and keeps the arrow from crossing whatever sits between them.
+
+Arcs are diverted into a clear horizontal lane whenever the straight path would cross another glyph, tested geometrically rather than guessed from rank distance: feedback below, long forward arcs above, so the two remain distinguishable. A rank-span rule would both miss a short arc that passes over a node and divert a long one that passes over nothing.
+
+Type size is a hard floor. The compiler tightens the gutters until body type clears 6 pt at the target width, 12 pt inside a graphical abstract, and refuses otherwise, naming the binding constraint: the number of rank columns, not the entity count. Merging two adjacent ranks keeps all the content; removing entities loses it.
+
+Every glyph is sized from one text-metrics function. The `process` class is the SBGN square carried on an arc, with its label beside it; a labelled box in an algorithm or study design is the `step` class.
+
+`--resolve-assets` fetches pictograms from the open registry. Only an exact match on a catalogue name or tag is accepted without confirmation, because a near match on a cell type is a misstatement rather than an approximation; weaker matches are reported as candidates to confirm with an explicit `asset:`. When nothing resolves, the entity is drawn as a plain solid outline and a warning names the terms tried. It is never drawn dashed: dashed means "unspecified" in the lexicon, and overloading it to mean "the resolver found nothing" invites the author to downgrade a cell to a macromolecule just to get a clean box, which corrupts the semantics to work around a tool limitation. Canonical pictograms are desaturated at the colour values, not with an SVG filter, so the colour channel cannot be reclaimed by an imported icon in a PDF or EPS conversion.
 
 ## Files
 
@@ -65,4 +78,6 @@ Three behaviours worth knowing. Nodes whose only role is to inhibit or catalyse 
 - `schema/figure-spec.schema.json` — the intermediate representation
 - `assets/sources.json` — open asset registry and licence gate
 - `assets/figure-lexicon-v0.1.svg` — rendered reference plate of the lexicon
+- `render/asset_resolver.py` — pictogram resolution, licence gate, vector gate
 - `examples/moa-example.yaml` — worked specification
+- `examples/pictogram-example.yaml` — resolved pictograms, lane routing, desaturation

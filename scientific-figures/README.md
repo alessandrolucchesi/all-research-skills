@@ -27,9 +27,11 @@ The figure above is compiled entirely from `examples/moa-example.yaml`, with no 
 
 ## Status and limitations
 
-Version 0.1. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
+Version 0.2, after the first production use. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
 
-Known limits: pictogram resolution against the registry is specified but not yet wired to the network, so entities of class cell, tissue, organ and subject render as placeholders; Servier Medical Art serves raster only, so figures using it are not fully vectorial; a figure needing more than about five rank columns will fail the type-size floor at double-column width, by design.
+New in 0.2: pictogram resolution against Bioicons and Health Icons, with a vector gate alongside the licence gate and exact-match-only auto-acceptance; one text-metrics function for every glyph; a `step` class distinct from the SBGN `process`; arcs diverted into a clear lane by geometric intersection rather than by rank distance; desaturation of canonical pictograms applied to colour values; a refusal message that names the binding constraint.
+
+Known limits: output is SVG only, so a figure that co-authors must revise still leaves the pipeline; there are no panels, which makes "split the figure" advice the tool cannot execute; NIH BioArt, SciDraw, Open Science Art and PhyloPic have no machine index wired and are resolved by hand through `asset:`; relation labels are placed without collision avoidance except on lane-routed arcs; the lexicon has no glyph class for a measured physiological quantity, which currently falls back to `unspecified`.
 
 ## Citing
 
@@ -46,7 +48,9 @@ references/03-journal-and-policy.md   target specifications, AI policy, accessib
 schema/figure-spec.schema.json        intermediate representation
 assets/sources.json                   open asset registry and licence gate
 assets/figure-lexicon-v0.1.svg        rendered reference plate
+render/asset_resolver.py              pictogram resolution, licence and vector gates
 examples/moa-example.yaml             worked specification
+examples/pictogram-example.yaml       resolved pictograms and lane routing
 examples/moa-example.journal.svg      its compiled output
 CITATION.cff                          citation metadata
 LICENSE / LICENSING.md                MIT for code, CC BY 4.0 for the plates

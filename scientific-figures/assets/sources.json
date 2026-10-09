@@ -1,25 +1,65 @@
 {
-  "registry_version": "0.1",
+  "registry_version": "0.2",
   "updated": "2026-10-10",
   "purpose": "Machine readable registry of open asset sources for scientific figure composition. Every pictorial asset used by the skill must resolve to an entry in this file. An asset with no entry is refused, not guessed.",
-
   "license_gate": {
     "targets": {
       "oa_cc_by": {
         "description": "Open access article published under CC BY 4.0 (most OA journals, Plan S compliant venues).",
-        "allow": ["PD", "CC0", "MIT", "BSD", "CC-BY-3.0", "CC-BY-4.0"],
-        "deny": ["CC-BY-SA", "CC-BY-NC", "CC-BY-NC-SA", "CC-BY-ND", "CC-BY-NC-ND", "proprietary"]
+        "allow": [
+          "PD",
+          "CC0",
+          "MIT",
+          "BSD",
+          "CC-BY-3.0",
+          "CC-BY-4.0"
+        ],
+        "deny": [
+          "CC-BY-SA",
+          "CC-BY-NC",
+          "CC-BY-NC-SA",
+          "CC-BY-ND",
+          "CC-BY-NC-ND",
+          "proprietary"
+        ]
       },
       "subscription": {
         "description": "Subscription or hybrid article, author retains no CC licence obligation.",
-        "allow": ["PD", "CC0", "MIT", "BSD", "CC-BY-3.0", "CC-BY-4.0"],
-        "review": ["CC-BY-NC", "CC-BY-NC-SA"],
-        "deny": ["CC-BY-ND", "CC-BY-NC-ND", "CC-BY-SA", "proprietary"]
+        "allow": [
+          "PD",
+          "CC0",
+          "MIT",
+          "BSD",
+          "CC-BY-3.0",
+          "CC-BY-4.0"
+        ],
+        "review": [
+          "CC-BY-NC",
+          "CC-BY-NC-SA"
+        ],
+        "deny": [
+          "CC-BY-ND",
+          "CC-BY-NC-ND",
+          "CC-BY-SA",
+          "proprietary"
+        ]
       },
       "internal": {
         "description": "Slides, teaching, grant applications, internal reports. Not a publication.",
-        "allow": ["PD", "CC0", "MIT", "BSD", "CC-BY-3.0", "CC-BY-4.0", "CC-BY-NC", "CC-BY-NC-SA", "CC-BY-SA"],
-        "deny": ["proprietary"]
+        "allow": [
+          "PD",
+          "CC0",
+          "MIT",
+          "BSD",
+          "CC-BY-3.0",
+          "CC-BY-4.0",
+          "CC-BY-NC",
+          "CC-BY-NC-SA",
+          "CC-BY-SA"
+        ],
+        "deny": [
+          "proprietary"
+        ]
       }
     },
     "rationale": {
@@ -30,18 +70,43 @@
     },
     "enforcement": "The gate runs before rendering. A figure containing a denied asset does not compile. Assets in 'review' compile only with an explicit override flag recorded in the spec provenance block."
   },
-
   "sources": [
     {
       "id": "nih-bioart",
       "name": "NIH BioArt Source (NIAID)",
       "url": "https://bioart.niaid.nih.gov/",
       "license_model": "per_item",
-      "licenses": ["PD", "CC-BY-4.0", "CC-BY-SA", "CC-BY-ND", "CC-BY-NC", "CC-BY-NC-SA", "CC-BY-NC-ND"],
-      "formats": ["SVG", "AI", "EPS", "PNG"],
+      "licenses": [
+        "PD",
+        "CC-BY-4.0",
+        "CC-BY-SA",
+        "CC-BY-ND",
+        "CC-BY-NC",
+        "CC-BY-NC-SA",
+        "CC-BY-NC-ND"
+      ],
+      "formats": [
+        "SVG",
+        "AI",
+        "EPS",
+        "PNG"
+      ],
       "access": "http_page",
       "approximate_size": 2000,
-      "domains": ["anatomy", "cells", "organelles", "viruses", "bacteria", "arthropods", "proteins", "molecules", "equipment", "people", "plants", "animals"],
+      "domains": [
+        "anatomy",
+        "cells",
+        "organelles",
+        "viruses",
+        "bacteria",
+        "arthropods",
+        "proteins",
+        "molecules",
+        "equipment",
+        "people",
+        "plants",
+        "animals"
+      ],
       "attribution_template": "Illustration from NIAID NIH BIOART Source (bioart.niaid.nih.gov/bioart/{asset_id}).",
       "gate": "per_item_check_required",
       "notes": "Drawn by professional medical illustrators, highest anatomical reliability of the open sources. Free for any use including commercial, but the licence varies per entry and the site exposes a licence filter. Never treat the library as uniformly public domain."
@@ -51,52 +116,111 @@
       "name": "Servier Medical Art (SMART)",
       "url": "https://smart.servier.com/",
       "license_model": "uniform",
-      "licenses": ["CC-BY-4.0"],
-      "formats": ["PNG", "PPTX"],
+      "licenses": [
+        "CC-BY-4.0"
+      ],
+      "formats": [
+        "PNG",
+        "PPTX"
+      ],
       "access": "http_page",
       "approximate_size": 3000,
-      "domains": ["human anatomy", "pathology", "cellular biology", "medical specialties", "physiological processes", "people"],
+      "domains": [
+        "human anatomy",
+        "pathology",
+        "cellular biology",
+        "medical specialties",
+        "physiological processes",
+        "people"
+      ],
       "attribution_template": "Adapted from Servier Medical Art by Servier, licensed under CC BY 4.0.",
       "gate": "allow",
-      "notes": "Widest clinical coverage and a single uniform licence, which makes gating trivial. Technical limitation: the site serves raster and PowerPoint, not native SVG, so assets need vectorisation or must be confined to raster layers. Prefer an equivalent vector asset from another source when one exists."
+      "notes": "Widest clinical coverage. The direct site serves PNG and PowerPoint, not native SVG, which is why it is not fetched from there. The 1373 Servier icons mirrored in Bioicons under cc-by-3.0 ARE genuine vector (verified: megakaryocyte.svg, 22 paths, no raster; healthy-lung.svg, 128 paths, no raster), so the resolver reaches Servier through Bioicons and ranks it second."
     },
     {
       "id": "bioicons",
       "name": "Bioicons",
       "url": "https://bioicons.com/",
       "license_model": "per_item",
-      "licenses": ["CC0", "MIT", "CC-BY-SA", "BSD", "CC-BY-4.0"],
-      "formats": ["SVG"],
+      "licenses": [
+        "CC0",
+        "MIT",
+        "CC-BY-SA",
+        "BSD",
+        "CC-BY-4.0"
+      ],
+      "formats": [
+        "SVG"
+      ],
       "access": "json_index",
       "index_url": "https://raw.githubusercontent.com/duerrsimon/bioicons/main/static/icons/icons.json",
       "approximate_size": 2800,
-      "domains": ["blood and immunology", "cell membrane", "chemistry", "genetics", "human physiology", "intracellular components", "lab apparatus", "microbiology", "nucleic acids", "oncology", "receptors and channels", "tissues", "viruses"],
+      "domains": [
+        "blood and immunology",
+        "cell membrane",
+        "chemistry",
+        "genetics",
+        "human physiology",
+        "intracellular components",
+        "lab apparatus",
+        "microbiology",
+        "nucleic acids",
+        "oncology",
+        "receptors and channels",
+        "tissues",
+        "viruses"
+      ],
       "attribution_template": "Icon by {author}, Bioicons, licensed under {license}.",
       "gate": "per_item_check_required",
-      "notes": "Primary programmatic source. The licence is encoded in the icon identifier itself (pattern: bioicons${license}${category}${author}${name}), so the gate can be applied without a network call once the index is cached. Watch for CC-BY-SA items, which the gate denies for publication targets."
+      "notes": "Primary programmatic source. The licence is carried in the DIRECTORY PATH, not in the filename: static/icons/{license}/{category}/{author}/{name}.svg. The index at index_url holds {name, category, license, author} per entry, which is sufficient to reconstruct the path with no further lookup. Census of 2804 entries: cc-by-3.0 1375, cc-by-4.0 883, cc-0 465, mit 39, cc-by-sa-4.0 35, cc-by-sa-3.0 4, bsd 3, so the gate denies about 1.4 per cent. Servier contributes 1373 of these, all cc-by-3.0."
     },
     {
       "id": "health-icons",
       "name": "Health Icons",
       "url": "https://healthicons.org/",
       "license_model": "uniform",
-      "licenses": ["CC0"],
-      "formats": ["SVG", "PNG"],
-      "access": "bulk_download",
-      "domains": ["anatomy", "devices", "symptoms", "public health", "medications", "people"],
+      "licenses": [
+        "CC0"
+      ],
+      "formats": [
+        "SVG",
+        "PNG"
+      ],
+      "access": "json_index",
+      "domains": [
+        "anatomy",
+        "devices",
+        "symptoms",
+        "public health",
+        "medications",
+        "people"
+      ],
       "attribution_template": null,
       "gate": "allow",
-      "notes": "Uniform CC0 and a consistent visual style. Best default for clinical pictograms and for algorithm nodes. No attribution required, which keeps composite figures legally clean."
+      "notes": "Uniform CC0 and a consistent style. 749 entries in the repository's own metadata file, with curated tags that match better than a filename. Use the raw metadata file rather than the GitHub tree API, which answers 403 from a sandboxed session. Best default for clinical pictograms; no attribution required, which keeps composites legally clean.",
+      "index_url": "https://raw.githubusercontent.com/resolvetosavelives/healthicons/main/public/icons/meta-data.json"
     },
     {
       "id": "scidraw",
       "name": "SciDraw",
       "url": "https://scidraw.io/",
       "license_model": "per_item",
-      "licenses": ["CC0", "CC-BY-4.0", "CC-BY-NC", "CC-BY-SA"],
-      "formats": ["SVG"],
+      "licenses": [
+        "CC0",
+        "CC-BY-4.0",
+        "CC-BY-NC",
+        "CC-BY-SA"
+      ],
+      "formats": [
+        "SVG"
+      ],
       "access": "http_page",
-      "domains": ["animals", "experimental setups", "lab equipment", "neuroscience"],
+      "domains": [
+        "animals",
+        "experimental setups",
+        "lab equipment",
+        "neuroscience"
+      ],
       "attribution_template": "Drawing by {author}, SciDraw, licensed under {license}.",
       "gate": "per_item_check_required",
       "notes": "Strongest for experimental setup and animal model panels. No login required for download."
@@ -106,9 +230,20 @@
       "name": "Open Science Art",
       "url": "https://openscienceart.com/",
       "license_model": "per_item",
-      "licenses": ["CC0", "CC-BY-4.0"],
-      "formats": ["SVG", "PNG", "3D"],
-      "domains": ["icons", "illustrations", "molecular models"],
+      "licenses": [
+        "CC0",
+        "CC-BY-4.0"
+      ],
+      "formats": [
+        "SVG",
+        "PNG",
+        "3D"
+      ],
+      "domains": [
+        "icons",
+        "illustrations",
+        "molecular models"
+      ],
       "access": "http_page",
       "gate": "per_item_check_required",
       "notes": "Mixed catalogue of flat icons, detailed illustrations and 3D molecular models."
@@ -118,11 +253,23 @@
       "name": "PhyloPic",
       "url": "https://www.phylopic.org/",
       "license_model": "per_item",
-      "licenses": ["PD", "CC0", "CC-BY-3.0", "CC-BY-SA", "CC-BY-NC"],
-      "formats": ["SVG", "PNG"],
+      "licenses": [
+        "PD",
+        "CC0",
+        "CC-BY-3.0",
+        "CC-BY-SA",
+        "CC-BY-NC"
+      ],
+      "formats": [
+        "SVG",
+        "PNG"
+      ],
       "access": "rest_api",
       "index_url": "https://api.phylopic.org",
-      "domains": ["organism silhouettes", "model organisms"],
+      "domains": [
+        "organism silhouettes",
+        "model organisms"
+      ],
       "attribution_template": "Silhouette by {author}, PhyloPic, licensed under {license}.",
       "gate": "per_item_check_required",
       "notes": "Only source with a true public REST API, queryable by taxon name. Use for model organism and species marks in comparative panels."
@@ -137,9 +284,16 @@
         "content_and_illustrations": "CC-BY-4.0",
         "software": "Apache-2.0"
       },
-      "formats": ["SVG", "PNG", "SBGN", "BioPAX"],
+      "formats": [
+        "SVG",
+        "PNG",
+        "SBGN",
+        "BioPAX"
+      ],
       "access": "rest_api",
-      "domains": ["curated human pathways"],
+      "domains": [
+        "curated human pathways"
+      ],
       "attribution_template": "Pathway content from Reactome, licensed under CC BY 4.0.",
       "gate": "allow",
       "notes": "Pathway illustrations, the icon library and branding materials are CC BY 4.0; the underlying data is CC0. Preferred source for canonical pathway topology."
@@ -149,10 +303,18 @@
       "name": "WikiPathways",
       "url": "https://www.wikipathways.org/",
       "license_model": "uniform",
-      "licenses": ["CC0"],
-      "formats": ["GPML", "SVG", "PNG"],
+      "licenses": [
+        "CC0"
+      ],
+      "formats": [
+        "GPML",
+        "SVG",
+        "PNG"
+      ],
       "access": "rest_api",
-      "domains": ["community curated pathways"],
+      "domains": [
+        "community curated pathways"
+      ],
       "attribution_template": null,
       "gate": "allow",
       "notes": "Entirely CC0, therefore the lowest friction source for pathway topology that will be redrawn in the house lexicon. Attribution is courteous but not required."
@@ -162,8 +324,13 @@
       "name": "KEGG pathway maps",
       "url": "https://www.kegg.jp/",
       "license_model": "proprietary",
-      "licenses": ["proprietary"],
-      "formats": ["PNG", "KGML"],
+      "licenses": [
+        "proprietary"
+      ],
+      "formats": [
+        "PNG",
+        "KGML"
+      ],
       "access": "rest_api",
       "gate": "deny",
       "notes": "Map images are copyright Kanehisa Laboratories and publishers require a named written permission identifying each map by code, conditional on citing a KEGG paper. The restriction also covers figures generated by pathview, clusterProfiler and similar packages, which carry the mark. The skill never embeds a KEGG map; it may use KGML topology as input to a redrawn figure, with the redraw declared."
@@ -173,14 +340,19 @@
       "name": "BioRender",
       "url": "https://www.biorender.com/",
       "license_model": "proprietary",
-      "licenses": ["proprietary"],
-      "formats": ["PNG", "PDF", "SVG"],
+      "licenses": [
+        "proprietary"
+      ],
+      "formats": [
+        "PNG",
+        "PDF",
+        "SVG"
+      ],
       "access": "mcp_connector",
       "gate": "external",
       "notes": "Out of the open asset pipeline. Free plan figures carry no publication rights; only paid plans generate a publication licence with a unique citation of the form 'Created in BioRender. Author (year) URL', with a combined CC BY 4.0 variant for open access. Usable as an optional external path, never as a dependency of the skill."
     }
   ],
-
   "resolution_order": [
     "health-icons",
     "bioicons",
@@ -190,5 +362,13 @@
     "phylopic",
     "servier-smart"
   ],
-  "resolution_note": "Ordered by licence cleanliness first and vector availability second, not by catalogue size. Servier is last despite its coverage because it serves raster only. Reactome and WikiPathways are not in this order because they supply topology, not pictorial assets."
+  "resolution_note": "Health Icons first (CC0, no attribution bookkeeping), then Bioicons, which carries the Servier collection as genuine vector and is therefore where the resolver finds most clinical subjects. The servier-smart entry stays last because it refers to the direct site, which is raster; the Servier artwork itself is reached through Bioicons. Sources below Bioicons have no machine index and are resolved by hand through the spec's `asset:` field. Reactome and WikiPathways are not in this order: they supply topology, not pictures.",
+  "vector_gate": {
+    "rule": "reject if the file contains '<image' or 'data:image', or has no <path> and no <polygon>",
+    "why": "A licence-clean SVG can still be a raster in a vector wrapper, which produces a raster island inside the drawing and fails at print resolution. Verified case: cc-by-4.0/Blood_Immunology/El-Jayawant/bone_marrow.svg, 310 KB, zero paths, one embedded raster. The registry cannot carry this flag because it is a property of the file, so the resolver checks every candidate and records vector: true in provenance."
+  },
+  "auto_accept": {
+    "rule": "only an exact match on a catalogue name or tag is used without human confirmation",
+    "why": "During testing 'neutrophil', widened by a synonym to 'granulocyte', scored 86 against a Servier BASOPHIL icon. For a cell type a near match is not an approximation, it is a misstatement, and it would have shipped looking exactly like a correct one. Weaker matches are reported as candidates for the author to confirm with an explicit asset."
+  }
 }

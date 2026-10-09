@@ -1,0 +1,79 @@
+# Exercises the v0.2 additions: resolved pictograms, the `step` class,
+# a long forward arc that must be routed around an intervening glyph.
+# Compile with: python render/figure_render.py examples/pictogram-example.yaml \
+#   --resolve-assets -o out.svg
+
+meta:
+  title: "Marrow output and the pulmonary vascular bed"
+  band: B
+  figure_class: mechanism_of_action
+  target: oa_cc_by
+  claim: >
+    Circulating megakaryocytes reaching the pulmonary vascular bed are
+    associated with raised vascular resistance; the proposed contribution of
+    the marrow compartment itself is inferred, not demonstrated.
+  accent_colour: "#0b6ea8"
+
+compartments:
+  - id: marrow
+    label: "Bone marrow"
+    type: physical
+  - id: circulation
+    label: "Circulation"
+    type: conceptual
+  - id: lung
+    label: "Pulmonary vascular bed"
+    type: physical
+
+entities:
+  - id: mk
+    label: "Megakaryocyte"
+    class: cell
+    compartment: marrow
+    role: canonical
+
+  - id: vessel
+    label: "Endothelium"
+    class: tissue
+    compartment: circulation
+    role: canonical
+
+  - id: lung_tissue
+    label: "Lung"
+    class: organ
+    compartment: lung
+    role: canonical
+
+  - id: pvr
+    label: "Pulmonary vascular resistance"
+    class: unspecified
+    compartment: lung
+    role: contribution
+
+relations:
+  - from: mk
+    to: vessel
+    type: transport
+    evidence: established
+    source: "10.0000/example.transit"
+
+  - from: vessel
+    to: lung_tissue
+    type: stimulation
+    evidence: associated
+    source: "10.0000/example.remodelling"
+
+  - from: lung_tissue
+    to: pvr
+    type: stimulation
+    evidence: demonstrated_here
+    role: contribution
+
+  # Spans three ranks: the straight path would cross the intervening glyphs,
+  # so the renderer must divert it into a clear lane.
+  - from: mk
+    to: pvr
+    type: stimulation
+    evidence: hypothesized
+    source: "this work, proposed"
+    label: "proposed direct contribution"

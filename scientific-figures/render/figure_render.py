@@ -24,6 +24,7 @@ import argparse
 import json
 import math
 import os
+import re
 import sys
 
 try:
@@ -73,8 +74,33 @@ SHRINK = {"binding": 0.0, "inhibition": 1.0, "catalysis": 13.0}
 PICTOGRAM_CLASSES = {"cell", "tissue", "organ", "subject"}
 GEOMETRIC_CLASSES = {
     "macromolecule", "nucleic_acid", "small_molecule",
-    "complex", "unspecified", "process",
+    "complex", "unspecified", "process", "step",
 }
+
+BASE_FONT = 15.0
+ICON_H = 46.0           # vertical room a resolved pictogram adds to a node
+PROCESS_SIDE = 22.0     # SBGN process square, drawn on the arc, not around text
+
+
+def text_width(s, font=BASE_FONT):
+    """Approximate Helvetica advance width. One metric, used by every class.
+
+    Every glyph must be sized from this function. The v0.1 `process` branch
+    ignored the measured size and drew a fixed square, which is how labels
+    came to overflow their own boxes.
+    """
+    narrow, wide = "iljtfr.,:;'|!()[] ", "mwMW@%"
+    total = 0.0
+    for ch in s:
+        if ch in narrow:
+            total += 0.30
+        elif ch in wide:
+            total += 0.92
+        elif ch.isupper() or ch.isdigit():
+            total += 0.66
+        else:
+            total += 0.54
+    return total * font
 
 # Layout metrics, in user units
 GUTTER = 78.0       # horizontal clearance between rank columns
@@ -174,7 +200,9 @@ def validate(spec, sources=None):
             errors.append(f"entity {e['id']}: unknown compartment '{e['compartment']}'")
         if e["class"] in PICTOGRAM_CLASSES and not e.get("asset"):
             warnings.append(
-                f"entity {e['id']}: class '{e['class']}' expects a registry pictogram; rendered as a placeholder"
+                f"entity {e['id']}: no pictogram resolved for class '{e['class']}'; drawn as a plain "
+                f"outline. Run with --resolve-assets, or set `asset:` by hand. Do not downgrade the "
+                f"class to get a cleaner glyph: that corrupts the semantics."
             )
         if e["class"] == "subject" and not e.get("human_attributes"):
             warnings.append(
@@ -208,9 +236,9 @@ def validate(spec, sources=None):
 
 class Node:
     __slots__ = ("id", "label", "cls", "comp", "role", "spec", "x", "y", "w", "h",
-                 "rank", "row", "modifier")
+                 "rank", "row", "modifier", "has_icon")
 
-    def __init__(self, e):
+    def __init__(self, e, font=BASE_FONT):
         self.modifier = False
         self.id = e["id"]
         self.label = e.get("label", e["id"])
@@ -218,8 +246,13 @@ class Node:
         self.comp = e.get("compartment")
         self.role = e.get("role", "canonical")
         self.spec = e
-        self.w = max(NODE_MIN_W, 9.0 * len(self.label) + 34.0)
-        self.h = NODE_H
+        self.has_icon = bool(e.get("asset", {}).get("_svg"))
+        tw = text_width(self.label, font)
+        if self.cls == "process":
+            self.w = max(NODE_MIN_W, PROCESS_SIDE + 10.0 + tw + 24.0)
+        else:
+            self.w = max(NODE_MIN_W, tw + 30.0)
+        self.h = NODE_H + (ICON_H if self.has_icon else 0.0)
         self.x = self.y = 0.0
         self.rank = 0
         self.row = 0
@@ -288,8 +321,8 @@ def compartment_tree(comps):
     return roots, children
 
 
-def layout(spec, gutter=GUTTER):
-    nodes = [Node(e) for e in spec["entities"]]
+def layout(spec, gutter=GUTTER, font=BASE_FONT):
+    nodes = [Node(e, font) for e in spec["entities"]]
     by_id = {n.id: n for n in nodes}
     comps = spec.get("compartments", []) or []
     comp_by_id = {c["id"]: c for c in comps}
@@ -425,6 +458,152 @@ def rect_edge(node, tx, ty):
     return node.cx + dx * s, node.cy + dy * s
 
 
+_HEX = re.compile(r"#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})\b")
+_RGB = re.compile(r"rgb\(\s*(\d+)[,\s]+(\d+)[,\s]+(\d+)\s*\)")
+
+
+def desaturate_svg(text, keep=0.12):
+    """Rewrite every colour in an imported icon towards grey.
+
+    Done by rewriting the colour values rather than with an SVG filter: a
+    filter is a rendering-time effect that some rasterisers ignore and some
+    PDF and EPS conversions drop, which would let a canonical pictogram
+    silently reclaim the colour channel at the worst moment, in the
+    publisher's production pipeline.
+    """
+    def grey(r, g, b):
+        lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
+        return tuple(int(round(lum + (c - lum) * keep)) for c in (r, g, b))
+
+    def hex_sub(m):
+        h = m.group(1)
+        if len(h) == 3:
+            h = "".join(c * 2 for c in h)
+        r, g, b = (int(h[i:i + 2], 16) for i in (0, 2, 4))
+        return "#%02x%02x%02x" % grey(r, g, b)
+
+    def rgb_sub(m):
+        r, g, b = (int(m.group(i)) for i in (1, 2, 3))
+        return "rgb(%d,%d,%d)" % grey(r, g, b)
+
+    return _RGB.sub(rgb_sub, _HEX.sub(hex_sub, text))
+
+
+def embed_svg(svg_text, x, y, w, h, uid):
+    """Inline a fetched SVG into the drawing, scaled into the given box.
+
+    Ids are namespaced so two icons cannot collide, and any script or event
+    handler is stripped: these files come from third-party repositories and
+    the output is a figure, not a document that should execute anything.
+    """
+    svg_text = re.sub(r"(?is)<script.*?</script>", "", svg_text)
+    svg_text = re.sub(r'(?i)\son\w+="[^"]*"', "", svg_text)
+    m = re.search(r'viewBox="([-\d.eE\s,]+)"', svg_text)
+    if m:
+        nums = [float(t) for t in re.split(r"[\s,]+", m.group(1).strip())]
+        vx, vy, vw, vh = nums if len(nums) == 4 else (0.0, 0.0, 100.0, 100.0)
+    else:
+        def attr(name, default):
+            mm = re.search(name + r'="([\d.]+)', svg_text)
+            return float(mm.group(1)) if mm else default
+        vx, vy, vw, vh = 0.0, 0.0, attr("width", 100.0), attr("height", 100.0)
+    if vw <= 0 or vh <= 0:
+        return ""
+    inner = re.sub(r"(?s)^.*?<svg[^>]*>", "", svg_text)
+    inner = re.sub(r"(?s)</svg>\s*$", "", inner)
+    for ident in set(re.findall(r'id="([^"]+)"', inner)):
+        new = f"{uid}_{ident}"
+        inner = (inner.replace(f'id="{ident}"', f'id="{new}"')
+                      .replace(f"url(#{ident})", f"url(#{new})")
+                      .replace(f'href="#{ident}"', f'href="#{new}"'))
+    sc = min(w / vw, h / vh)
+    tx = x + (w - vw * sc) / 2.0 - vx * sc
+    ty = y + (h - vh * sc) / 2.0 - vy * sc
+    return f'<g transform="translate({tx:.2f},{ty:.2f}) scale({sc:.4f})">{inner}</g>'
+
+
+def resolve_spec_assets(spec, strict=False):
+    """Populate entity.asset and provenance.assets from the open registry.
+
+    Returns a list of messages. Nothing is auto-accepted below the resolver's
+    exact-match threshold: a near match on a cell type is a misstatement, not
+    an approximation.
+    """
+    try:
+        from . import asset_resolver as AR          # noqa
+    except Exception:
+        sys.path.insert(0, HERE)
+        import asset_resolver as AR
+    msgs = []
+    target = spec["meta"]["target"]
+    prov = spec.setdefault("provenance", {}).setdefault("assets", [])
+    prefer = None       # once one family is used, prefer it: mixing a flat
+                        # pictogram set with a detailed illustration set reads
+                        # as two figures spliced together
+    for e in spec["entities"]:
+        if e.get("class") not in PICTOGRAM_CLASSES or e.get("asset", {}).get("_svg"):
+            continue
+        accepted, candidates, terms = AR.resolve(
+            e.get("label", e["id"]), target=target,
+            synonyms=e.get("synonyms"), cls=e.get("class"),
+            prefer_source=prefer)
+        if accepted:
+            a = accepted[0]
+            e["asset"] = a
+            prefer = prefer or a["source_id"]
+            prov.append({k: v for k, v in a.items() if k not in ("svg", "score")})
+            msgs.append(f"entity {e['id']}: resolved {a['source_id']} {a['asset_id']} ({a['license']})")
+            e["asset"]["_svg"] = a["svg"]
+        else:
+            tried = ", ".join(terms)
+            extra = ""
+            if candidates:
+                extra = ("; closest non-exact: "
+                         + ", ".join(f"{c['asset_id']} ({c['score']})" for c in candidates[:3])
+                         + ". Set `asset:` explicitly to use one.")
+            msg = (f"entity {e['id']}: no exact pictogram for terms [{tried}]{extra}")
+            if strict:
+                raise SystemExit(f"error: {msg}")
+            msgs.append("warning: " + msg)
+    return msgs
+
+
+def seg_hits_node(x1, y1, x2, y2, node, pad=8.0):
+    """Liang-Barsky test: does the segment cross this node's padded box?"""
+    xmin, xmax = node.x - pad, node.x + node.w + pad
+    ymin, ymax = node.y - pad, node.y + node.h + pad
+    dx, dy = x2 - x1, y2 - y1
+    t0, t1 = 0.0, 1.0
+    for pp, qq in ((-dx, x1 - xmin), (dx, xmax - x1), (-dy, y1 - ymin), (dy, ymax - y1)):
+        if pp == 0:
+            if qq < 0:
+                return False
+            continue
+        t = qq / pp
+        if pp < 0:
+            if t > t1:
+                return False
+            t0 = max(t0, t)
+        else:
+            if t < t0:
+                return False
+            t1 = min(t1, t)
+    return True
+
+
+def clear_lane(a, b, nodes, below=True):
+    """Find a horizontal lane between a and b that no other glyph occupies."""
+    others = [n for n in nodes if n is not a and n is not b]
+    lane = (max(a.y + a.h, b.y + b.h) + 30.0) if below else (min(a.y, b.y) - 30.0)
+    stride = 22.0 if below else -22.0
+    lo, hi = min(a.cx, b.cx), max(a.cx, b.cx)
+    for _ in range(6):
+        if not any(seg_hits_node(lo, lane, hi, lane, n, pad=6.0) for n in others):
+            return lane
+        lane += stride
+    return lane
+
+
 def head(kind, x, y, angle, colour, sw, filled=True):
     deg = math.degrees(angle)
     g = f'<g transform="translate({x:.1f},{y:.1f}) rotate({deg:.1f})">'
@@ -462,11 +641,23 @@ def entity_shape(n, colour, sw):
         return (f'<path d="M{x+c:.1f},{y:.1f} h{w-2*c:.1f} l{c},{c} v{h-2*c:.1f} l-{c},{c} '
                 f'h-{w-2*c:.1f} l-{c},-{c} v-{h-2*c:.1f} z" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
     if n.cls == "process":
-        return f'<rect x="{n.cx-11:.1f}" y="{n.cy-11:.1f}" width="22" height="22" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>'
+        # SBGN sense: a small square carried on the arc. The label sits beside
+        # it, never inside it, so it cannot overflow.
+        sq = PROCESS_SIDE
+        return (f'<rect x="{x:.1f}" y="{n.cy - sq/2:.1f}" width="{sq:.1f}" height="{sq:.1f}" '
+                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+    if n.cls == "step":
+        return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" '
+                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+    if n.cls in PICTOGRAM_CLASSES and n.has_icon:
+        return ""   # the icon is the glyph; no box around it
     if n.cls in PICTOGRAM_CLASSES:
-        dash = ' stroke-dasharray="1 4"' if not n.spec.get("asset") else ""
+        # A resolved pictogram is drawn separately. When nothing resolves the
+        # glyph is a plain solid outline, never the dashed one: dashed means
+        # "unspecified" in the lexicon and must not be overloaded to mean
+        # "the resolver found nothing".
         return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="9" '
-                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"{dash}/>')
+                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
     return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" fill="#ffffff" '
             f'stroke="{colour}" stroke-width="{sw:.1f}" stroke-dasharray="6 5"/>')
 
@@ -489,7 +680,7 @@ def render(spec, variant="journal"):
     font = cfg["font"]
     sw = cfg["stroke"]
 
-    nodes, by_id, rects, width, height = layout(spec)
+    nodes, by_id, rects, width, height = layout(spec, font=font)
 
     # Fit to the physical column width. Type size is a hard floor, so the
     # canvas is what gives: tighten the gutters until the body type clears
@@ -498,13 +689,17 @@ def render(spec, variant="journal"):
     budget = type_budget(spec, cfg, width)
     if budget and width > budget:
         for g in (66.0, 56.0, 48.0, 42.0):
-            nodes, by_id, rects, width, height = layout(spec, gutter=g)
+            nodes, by_id, rects, width, height = layout(spec, gutter=g, font=font)
             if width <= budget:
                 fit_note = f"gutters tightened to {g:.0f} units to clear the type floor"
                 break
         else:
-            fit_note = ("CANNOT FIT: body type stays below the floor at this width. "
-                        "Reduce the number of semantic units or split the figure.")
+            ncols = len({n.rank for n in nodes})
+            fit_note = (
+                f"CANNOT FIT: {ncols} rank columns leave body type below the floor at "
+                f"{cfg.get('out_width_mm', 0):.0f} mm. The binding constraint is the number of "
+                "columns, not the entity count: merging two adjacent ranks keeps all the "
+                "content, removing entities loses it. Try merging ranks first.")
 
     used = {"relations": set(), "evidence": set(), "roles": set(), "comp_types": set()}
 
@@ -548,25 +743,42 @@ def render(spec, variant="journal"):
         if kind == "transport":
             stroke_w *= 0.6
 
+        label_at = None
         x1, y1 = rect_edge(a, b.cx, b.cy)
         x2, y2 = rect_edge(b, a.cx, a.cy)
         ang = math.atan2(y2 - y1, x2 - x1)
         shrink = SHRINK.get(kind, HEAD_LEN)
         ex, ey = x2 - math.cos(ang) * shrink, y2 - math.sin(ang) * shrink
 
-        back_edge = b.rank < a.rank and kind != "flow"
-        if back_edge:
-            # Feedback arcs travel along a clear lane below both nodes instead
-            # of cutting across whatever sits between them.
-            bus = max(a.y + a.h, b.y + b.h) + 34.0
-            height = max(height, bus + 26.0)
-            x1, y1 = a.cx, a.y + a.h
-            x2, y2 = b.cx, b.y + b.h
-            ey = y2 + shrink
-            d = (f"M{x1:.1f},{y1:.1f} L{x1:.1f},{bus:.1f} "
-                 f"L{x2:.1f},{bus:.1f} L{x2:.1f},{ey:.1f}")
-            ang = -math.pi / 2.0
-            ex = x2
+        # Route into a clear lane whenever the straight path would cut through
+        # another glyph, not merely when the arc runs backwards. A rank-span
+        # rule would miss a long arc that happens to pass over a node and
+        # divert a short one that passes over nothing.
+        blocked = any(seg_hits_node(x1, y1, ex, ey, n)
+                      for n in nodes if n is not a and n is not b)
+        back_edge = b.rank < a.rank
+        if kind != "flow" and (back_edge or blocked):
+            # Feedback below, long forward arcs above, so the two stay
+            # distinguishable. Fall back to below if the upper lane would
+            # leave the canvas.
+            below = back_edge
+            lane = clear_lane(a, b, nodes, below=below)
+            if not below and lane < 16.0:
+                below = True
+                lane = clear_lane(a, b, nodes, below=True)
+            x1, x2, ex = a.cx, b.cx, b.cx
+            if below:
+                y1, y2 = a.y + a.h, b.y + b.h
+                ey = y2 + shrink
+                ang = -math.pi / 2.0
+                height = max(height, lane + 26.0)
+            else:
+                y1, y2 = a.y, b.y
+                ey = y2 - shrink
+                ang = math.pi / 2.0
+            d = (f"M{x1:.1f},{y1:.1f} L{x1:.1f},{lane:.1f} "
+                 f"L{x2:.1f},{lane:.1f} L{x2:.1f},{ey:.1f}")
+            label_at = ((x1 + x2) / 2.0, lane - 9.0)
         elif kind == "flow":
             mx = (x1 + ex) / 2.0
             d = f"M{x1:.1f},{y1:.1f} L{mx:.1f},{y1:.1f} L{mx:.1f},{ey:.1f} L{ex:.1f},{ey:.1f}"
@@ -592,7 +804,7 @@ def render(spec, variant="journal"):
             out.append(head("catalysis", mid_x, mid_y,
                             math.atan2(mid_y - my, mid_x - mx), colour, stroke_w))
         if rel.get("label"):
-            lx, ly = (x1 + ex) / 2.0, (y1 + ey) / 2.0 - 8.0
+            lx, ly = label_at or ((x1 + ex) / 2.0, (y1 + ey) / 2.0 - 8.0)
             out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="{font*0.8:.1f}" text-anchor="middle" '
                        f'fill="{colour}">{esc(rel["label"])}</text>')
 
@@ -602,8 +814,23 @@ def render(spec, variant="journal"):
         nsw = sw * (1.3 if n.role == "contribution" else 1.0)
         used["roles"].add(n.role)
         out.append(entity_shape(n, colour, nsw))
-        out.append(f'<text x="{n.cx:.1f}" y="{n.cy + font*0.36:.1f}" font-size="{font:.1f}" '
-                   f'text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
+        if n.has_icon:
+            art = n.spec["asset"]["_svg"]
+            if n.role != "contribution":
+                # A library icon arrives with its own palette. Colour encodes
+                # narrative role here, so a canonical pictogram is desaturated
+                # rather than allowed to spend the channel.
+                art = desaturate_svg(art)
+            out.append(embed_svg(art, n.x, n.y, n.w, ICON_H,
+                                 re.sub(r"[^A-Za-z0-9]", "", n.id)))
+            out.append(f'<text x="{n.cx:.1f}" y="{n.y + ICON_H + font*1.1:.1f}" '
+                       f'font-size="{font:.1f}" text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
+        elif n.cls == "process":
+            out.append(f'<text x="{n.x + PROCESS_SIDE + 10:.1f}" y="{n.cy + font*0.36:.1f}" '
+                       f'font-size="{font:.1f}" fill="{INK}">{esc(n.label)}</text>')
+        else:
+            out.append(f'<text x="{n.cx:.1f}" y="{n.cy + font*0.36:.1f}" font-size="{font:.1f}" '
+                       f'text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
         for i, st in enumerate(n.spec.get("state", []) or []):
             sxc, syc = n.x + 12 + i * 24, n.y
             out.append(f'<circle cx="{sxc:.1f}" cy="{syc:.1f}" r="11" fill="#ffffff" stroke="{colour}" stroke-width="{sw*0.85:.1f}"/>')
@@ -729,12 +956,14 @@ def caption(spec):
         lines.append("")
         lines.append("Cited for the established steps: " + ", ".join(cited) + ".")
 
-    assets = spec.get("provenance", {}).get("assets", []) or []
-    if assets:
+    # Only assets that actually carry an attribution obligation appear here.
+    # A CC0 icon needs no credit, and printing one anyway trains authors to
+    # ignore the credit line.
+    credited = [a for a in (spec.get("provenance", {}).get("assets", []) or [])
+                if a.get("attribution")]
+    if credited:
         lines.append("")
-        lines.append("Image credits: " + " ".join(
-            a.get("attribution") or f"{a.get('source_id')} {a.get('asset_id')} ({a.get('license')})"
-            for a in assets))
+        lines.append("Image credits: " + " ".join(a["attribution"] for a in credited))
     return "\n".join(lines) + "\n"
 
 
@@ -769,9 +998,16 @@ def main():
     ap.add_argument("--variant", choices=sorted(VARIANTS), default="journal")
     ap.add_argument("--caption", help="write the generated caption to this path")
     ap.add_argument("--check", action="store_true", help="validate only")
+    ap.add_argument("--resolve-assets", action="store_true",
+                    help="resolve pictograms from the open registry (network)")
+    ap.add_argument("--strict-assets", action="store_true",
+                    help="refuse to render when a pictogram cannot be resolved exactly")
     args = ap.parse_args()
 
     spec = load_spec(args.spec)
+    if args.resolve_assets or args.strict_assets:
+        for m in resolve_spec_assets(spec, strict=args.strict_assets):
+            print(m, file=sys.stderr)
     errors, warnings = validate(spec)
     for w in warnings:
         print(f"warning: {w}", file=sys.stderr)

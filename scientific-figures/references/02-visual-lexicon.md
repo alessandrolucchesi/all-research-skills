@@ -60,9 +60,15 @@ One accent colour per figure. Use the blue and orange pair rather than red and g
 | `complex` | container enclosing its components rather than naming them |
 | `unspecified` | dashed outline |
 | `state_variable` | small circle on the entity border, labelled (P, Ub, Ac) |
+| `step` | labelled rectangle, sized from its text: a step in an algorithm or study design |
+| `process` | the SBGN square carried on an arc, label beside it, never inside |
 | `cell`, `tissue`, `organ`, `subject` | pictogram from the asset registry |
 
 **Iconography rule.** Pictograms are admitted only for classes where identity is itself the information: cell type, tissue, organ, clinical subject. Molecular entities stay geometric. An icon must do work a label could not do; otherwise it is noise competing for attention with the message.
+
+**When no pictogram resolves.** Draw a plain solid outline and warn, naming the search terms tried. Never the dashed outline: dashed means `unspecified`, that is, an identity the author could not state, and overloading it to mean "the resolver found nothing" pushes the author to misclassify a cell as a macromolecule just to obtain a clean box. A limitation routed around by corrupting the semantics is worse than one that fails loudly.
+
+**Imported pictograms are desaturated** unless the entity is the contribution. Colour encodes narrative role, and a library icon arrives with a palette of its own that would spend that channel. The desaturation is applied to the colour values, not through an SVG filter, because filters are dropped by some rasterisers and some PDF and EPS conversions.
 
 **Human figures.** A content analysis of a published medical graphical abstract gallery documented racial, gender and body-size bias. Icon libraries inherit their authors' defaults and an automated generator amplifies them silently. Human pictogram attributes are an explicit field in the spec, never left to the first search hit.
 
