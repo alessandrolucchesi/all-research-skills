@@ -39,6 +39,12 @@ import sys
 import urllib.parse
 import urllib.request
 
+try:
+    from .ontology import generic_assets, generic_terms, is_generalisation
+except Exception:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from ontology import generic_assets, generic_terms, is_generalisation
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 SOURCES = os.path.join(HERE, os.pardir, "assets", "sources.json")
 CACHE = os.environ.get("SCIFIG_CACHE", os.path.join(HERE, os.pardir, "assets", "cache"))
@@ -59,11 +65,9 @@ BIOICONS_LICENCE = {
 # Terms that will not match on surface form. Kept small and explicit: a
 # synonym map is a curation decision, not a guess the resolver should make.
 SYNONYMS = {
-    "pemh": ["megakaryocyte", "bone marrow"],
-    "extramedullary hematopoiesis": ["megakaryocyte", "bone marrow"],
-    "extramedullary haematopoiesis": ["megakaryocyte", "bone marrow"],
-    "clone": ["bone marrow"],
-    "mpn clone": ["bone marrow", "megakaryocyte"],
+    # Synonyms widen the search, never the meaning. Naming a coordinate term
+    # here would reintroduce sideways substitution through the back door:
+    # "mpn clone" once mapped to "megakaryocyte" and duly resolved to one.
     "endothelium": ["blood vessel", "endothelial"],
     "endothelial cell": ["blood vessel", "endothelial"],
     "platelet": ["thrombocyte", "platelet"],
@@ -197,11 +201,15 @@ def raw_url(hit):
     return f"{HEALTHICONS_RAW}/{quoted}"
 
 
-def attribution(hit):
-    if hit["source_id"] == "bioicons":
-        return (f"Icon \"{hit['name']}\" by {hit['author']}, Bioicons "
-                f"({BIOICONS_WEB}), licensed under {hit['license']}.")
-    return None  # CC0, no attribution obligation
+def attribution(hit, adaptations=()):
+    """CC BY requires that changes be indicated, so the adaptations are part
+    of the credit line rather than a footnote the author has to remember."""
+    if hit["source_id"] != "bioicons":
+        return None  # CC0, no attribution obligation
+    verb = "Adapted from icon" if adaptations else "Icon"
+    changes = f" Changes: {', '.join(adaptations)}." if adaptations else ""
+    return (f"{verb} \"{hit['name']}\" by {hit['author']}, Bioicons "
+            f"({BIOICONS_WEB}), licensed under {hit['license']}.{changes}")
 
 
 # --------------------------------------------------------------------------
@@ -264,6 +272,12 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
     gate = load_gate(target)
     cats = catalogues if catalogues is not None else (healthicons_catalogue() + bioicons_catalogue())
     terms = search_terms(label, synonyms, cls)
+    # The class's generic forms are searched too, so an entity with no exact
+    # icon still reaches a legitimate, more general one instead of falling
+    # back to a bare box.
+    for g in generic_terms(cls or ""):
+        if _norm(g) not in terms:
+            terms.append(_norm(g))
 
     ranked = []
     for hit in cats:
@@ -295,13 +309,24 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
         if not vec:
             rejected.append((hit, f"vector gate: {why}"))
             continue
+        # Generalise up, never sideways. A candidate whose words are a subset
+        # of the query drops qualifiers and may stand in, with the label
+        # carrying the identity. A candidate that adds a word is more specific
+        # or a sibling and is never taken automatically.
+        cand_words = _norm(hit["name"]).split()
+        generalises = (any(is_generalisation(cand_words, t.split()) for t in terms)
+                       or hit["name"].lower() in generic_assets(cls or ""))
+        adapt = []
+        if sc < auto_accept and generalises:
+            adapt.append("generic substitute for the labelled entity")
         record = {
             "source_id": hit["source_id"], "asset_id": hit["path"],
             "author": hit["author"], "license": hit["license"],
-            "url": raw_url(hit), "attribution": attribution(hit),
+            "url": raw_url(hit), "adaptations": adapt,
+            "attribution": attribution(hit, adapt),
             "vector": True, "score": sc, "svg": svg,
         }
-        if sc >= auto_accept:
+        if sc >= auto_accept or adapt:
             accepted.append(record)
         else:
             candidates.append(record)
@@ -330,6 +355,9 @@ def main():
         print(f"  ACCEPTED [{a['score']:3d}] {a['source_id']:13s} {a['license']:12s} {a['asset_id']}")
         if a["attribution"]:
             print(f"           {a['attribution']}")
+    for a in accepted:
+        if a["adaptations"]:
+            print(f"           adaptations: {'; '.join(a['adaptations'])}")
     for c in candidates[:5]:
         print(f"  candidate [{c['score']:3d}] {c['source_id']:13s} {c['license']:12s} {c['asset_id']}"
               f"   <- confirm with asset: before use")

@@ -1,7 +1,12 @@
-# Exercises the v0.2 additions: resolved pictograms, the `step` class,
-# a long forward arc that must be routed around an intervening glyph.
-# Compile with: python render/figure_render.py examples/pictogram-example.yaml \
-#   --resolve-assets -o out.svg
+# Exercises the ontology and the resolver.
+#
+# The clone is a `cell_population`, not a cell and certainly not a
+# macromolecule; the resistance is a `measure`, not an `unspecified`. Neither
+# has an exact icon, so one takes a curated generic substitute and the other
+# is geometric by class. A long forward arc must be diverted around the
+# intervening glyphs.
+#
+# python render/figure_export.py examples/pictogram-example.yaml --resolve-assets
 
 meta:
   title: "Marrow output and the pulmonary vascular bed"
@@ -11,7 +16,7 @@ meta:
   claim: >
     Circulating megakaryocytes reaching the pulmonary vascular bed are
     associated with raised vascular resistance; the proposed contribution of
-    the marrow compartment itself is inferred, not demonstrated.
+    the clone itself is inferred, not demonstrated.
   accent_colour: "#0b6ea8"
 
 compartments:
@@ -26,6 +31,12 @@ compartments:
     type: physical
 
 entities:
+  - id: clone
+    label: "MPN clone"
+    class: cell_population
+    compartment: marrow
+    role: canonical
+
   - id: mk
     label: "Megakaryocyte"
     class: cell
@@ -36,6 +47,7 @@ entities:
     label: "Endothelium"
     class: tissue
     compartment: circulation
+    synonyms: ["blood vessel"]
     role: canonical
 
   - id: lung_tissue
@@ -46,11 +58,17 @@ entities:
 
   - id: pvr
     label: "Pulmonary vascular resistance"
-    class: unspecified
+    class: measure
     compartment: lung
     role: contribution
 
 relations:
+  - from: clone
+    to: mk
+    type: production
+    evidence: established
+    source: "10.0000/example.clonality"
+
   - from: mk
     to: vessel
     type: transport

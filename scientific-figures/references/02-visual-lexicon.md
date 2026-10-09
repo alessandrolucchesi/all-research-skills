@@ -61,6 +61,10 @@ One accent colour per figure. Use the blue and orange pair rather than red and g
 | `unspecified` | dashed outline |
 | `state_variable` | small circle on the entity border, labelled (P, Ub, Ac) |
 | `step` | labelled rectangle, sized from its text: a step in an algorithm or study design |
+| `state` | tag, clipped at the leading corner: a clinical state or phenotype |
+| `measure` | rectangle carrying a short scale on its lower edge: a measured quantity |
+| `intervention` | lozenge with a central divider: a drug, device or procedure |
+| `organelle`, `cell`, `cell_population`, `tissue`, `organ`, `organism` | resolved pictogram, or this project's generic glyph for the class |
 | `process` | the SBGN square carried on an arc, label beside it, never inside |
 | `cell`, `tissue`, `organ`, `subject` | pictogram from the asset registry |
 

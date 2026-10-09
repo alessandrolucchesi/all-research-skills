@@ -1,0 +1,77 @@
+# A clinical algorithm: the class of figure co-authors revise, so it exports
+# to PPTX with native shapes by default.
+# python render/figure_export.py examples/algorithm-example.yaml
+
+meta:
+  title: "Work-up of suspected pulmonary hypertension in an MPN patient"
+  band: B
+  figure_class: clinical_algorithm
+  target: oa_cc_by
+  claim: >
+    Decision path from suspicion to haemodynamic confirmation, with each
+    threshold taken from the cited guidance rather than from local practice.
+  accent_colour: "#0b6ea8"
+
+entities:
+  - id: suspicion
+    label: "Unexplained dyspnoea in MPN"
+    class: state
+
+  - id: echo
+    label: "Transthoracic echocardiography"
+    class: step
+
+  - id: prob
+    label: "Echocardiographic probability"
+    class: measure
+
+  - id: lowprob
+    label: "Low probability: seek another cause"
+    class: step
+
+  - id: rhc
+    label: "Right heart catheterisation"
+    class: step
+
+  - id: mpap
+    label: "Mean pulmonary artery pressure"
+    class: measure
+
+  - id: ph
+    label: "Pulmonary hypertension confirmed"
+    class: state
+    role: contribution
+
+relations:
+  - from: suspicion
+    to: echo
+    type: flow
+    evidence: established
+    source: "10.0000/example.guideline"
+  - from: echo
+    to: prob
+    type: flow
+    evidence: established
+    source: "10.0000/example.guideline"
+  - from: prob
+    to: lowprob
+    type: flow
+    evidence: established
+    source: "10.0000/example.guideline"
+    label: "low"
+  - from: prob
+    to: rhc
+    type: flow
+    evidence: established
+    source: "10.0000/example.guideline"
+    label: "intermediate or high"
+  - from: rhc
+    to: mpap
+    type: flow
+    evidence: established
+    source: "10.0000/example.guideline"
+  - from: mpap
+    to: ph
+    type: flow
+    evidence: demonstrated_here
+    role: contribution

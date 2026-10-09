@@ -71,11 +71,13 @@ VARIANTS = {
 # the boundary instead of floating away from the line.
 SHRINK = {"binding": 0.0, "inhibition": 1.0, "catalysis": 13.0}
 
-PICTOGRAM_CLASSES = {"cell", "tissue", "organ", "subject"}
-GEOMETRIC_CLASSES = {
-    "macromolecule", "nucleic_acid", "small_molecule",
-    "complex", "unspecified", "process", "step",
-}
+try:
+    from .ontology import (ONTOLOGY, PICTOGRAM_CLASSES, depiction_of,  # noqa
+                           generic_glyph)
+except Exception:
+    sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+    from ontology import (ONTOLOGY, PICTOGRAM_CLASSES, depiction_of,  # noqa
+                          generic_glyph)
 
 BASE_FONT = 15.0
 ICON_H = 46.0           # vertical room a resolved pictogram adds to a node
@@ -236,7 +238,7 @@ def validate(spec, sources=None):
 
 class Node:
     __slots__ = ("id", "label", "cls", "comp", "role", "spec", "x", "y", "w", "h",
-                 "rank", "row", "modifier", "has_icon")
+                 "rank", "row", "modifier", "has_icon", "pictorial")
 
     def __init__(self, e, font=BASE_FONT):
         self.modifier = False
@@ -247,12 +249,16 @@ class Node:
         self.role = e.get("role", "canonical")
         self.spec = e
         self.has_icon = bool(e.get("asset", {}).get("_svg"))
+        # A pictorial entity always gets icon room: with a resolved asset it
+        # holds the icon, without one it holds this class's generic glyph.
+        # Nothing is reduced to an anonymous box for want of an asset.
+        self.pictorial = depiction_of(e) == "pictogram"
         tw = text_width(self.label, font)
         if self.cls == "process":
             self.w = max(NODE_MIN_W, PROCESS_SIDE + 10.0 + tw + 24.0)
         else:
             self.w = max(NODE_MIN_W, tw + 30.0)
-        self.h = NODE_H + (ICON_H if self.has_icon else 0.0)
+        self.h = NODE_H + (ICON_H if (self.has_icon or self.pictorial) else 0.0)
         self.x = self.y = 0.0
         self.rank = 0
         self.row = 0
@@ -321,7 +327,55 @@ def compartment_tree(comps):
     return roots, children
 
 
+# Figure classes that read top to bottom. A decision procedure is read as a
+# descent, and laying one out left to right both reads wrongly and produces a
+# canvas too flat to hold legible type.
+VERTICAL_CLASSES = {"clinical_algorithm", "consort_flow", "prisma_flow", "stard_flow"}
+
+
+def orientation_of(spec):
+    o = spec["meta"].get("orientation", "auto")
+    if o in ("horizontal", "vertical"):
+        return o
+    if spec["meta"].get("figure_class") in VERTICAL_CLASSES and not spec.get("compartments"):
+        return "vertical"
+    return "horizontal"
+
+
+def layout_vertical(spec, gutter=GUTTER, font=BASE_FONT):
+    """Rank runs down the page; nodes sharing a rank spread across it."""
+    nodes = [Node(e, font) for e in spec["entities"]]
+    by_id = {n.id: n for n in nodes}
+    rank = topological_ranks(nodes, spec.get("relations", []))
+    for n in nodes:
+        n.rank = rank[n.id]
+    lanes = {}
+    for n in sorted(nodes, key=lambda m: (m.rank, m.id)):
+        lanes.setdefault(n.rank, []).append(n)
+    row_gap = 54.0
+    y = MARGIN + 10.0
+    width = max(sum(n.w for n in g) + gutter * (len(g) - 1) for g in lanes.values())
+    for rk in sorted(lanes):
+        group = lanes[rk]
+        total = sum(n.w for n in group) + gutter * (len(group) - 1)
+        x = MARGIN + (width - total) / 2.0
+        tallest = max(n.h for n in group)
+        for n in group:
+            n.x, n.y = x, y
+            x += n.w + gutter
+        y += tallest + row_gap
+    w = width + 2 * MARGIN
+    h = y - row_gap + MARGIN
+    return nodes, by_id, {}, w, h
+
+
 def layout(spec, gutter=GUTTER, font=BASE_FONT):
+    if orientation_of(spec) == "vertical":
+        return layout_vertical(spec, gutter=gutter, font=font)
+    return layout_horizontal(spec, gutter=gutter, font=font)
+
+
+def layout_horizontal(spec, gutter=GUTTER, font=BASE_FONT):
     nodes = [Node(e, font) for e in spec["entities"]]
     by_id = {n.id: n for n in nodes}
     comps = spec.get("compartments", []) or []
@@ -473,7 +527,11 @@ def desaturate_svg(text, keep=0.12):
     """
     def grey(r, g, b):
         lum = 0.2126 * r + 0.7152 * g + 0.0722 * b
-        return tuple(int(round(lum + (c - lum) * keep)) for c in (r, g, b))
+        # Lift the darkest tones. A flat black pictogram, merely desaturated,
+        # still outweighs everything around it and reclaims the emphasis that
+        # belongs to the contribution.
+        lum = max(lum, 112.0)
+        return tuple(min(255, int(round(lum + (c - lum) * keep))) for c in (r, g, b))
 
     def hex_sub(m):
         h = m.group(1)
@@ -649,15 +707,24 @@ def entity_shape(n, colour, sw):
     if n.cls == "step":
         return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" '
                 f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
-    if n.cls in PICTOGRAM_CLASSES and n.has_icon:
-        return ""   # the icon is the glyph; no box around it
+    if n.cls == "state":
+        # A clinical state or phenotype: a tag, clipped at the leading corner.
+        c = 13
+        return (f'<path d="M{x+c:.1f},{y:.1f} h{w-c:.1f} v{h:.1f} h-{w-c:.1f} '
+                f'l-{c},-{h/2:.1f} z" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+    if n.cls == "measure":
+        # A measured quantity: a box carrying a short scale on its lower edge.
+        t = "".join(f'<path d="M{x + w*k:.1f},{y+h:.1f} v-5" stroke="{colour}" '
+                    f'stroke-width="{sw*0.8:.1f}"/>' for k in (0.25, 0.5, 0.75))
+        return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="3" '
+                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>' + t)
     if n.cls in PICTOGRAM_CLASSES:
-        # A resolved pictogram is drawn separately. When nothing resolves the
-        # glyph is a plain solid outline, never the dashed one: dashed means
-        # "unspecified" in the lexicon and must not be overloaded to mean
-        # "the resolver found nothing".
-        return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="9" '
-                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+        if n.has_icon:
+            return ""   # the resolved icon is the glyph; no box around it
+        # Nothing resolved: draw this class's generic glyph. Never a dashed
+        # box, which means "unspecified", and never a plain rectangle, which
+        # tells the reader nothing the label has not already said.
+        return generic_glyph(n.cls, n.x, n.y, n.w, ICON_H, colour, sw)
     return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" fill="#ffffff" '
             f'stroke="{colour}" stroke-width="{sw:.1f}" stroke-dasharray="6 5"/>')
 
@@ -701,6 +768,7 @@ def render(spec, variant="journal"):
                 "columns, not the entity count: merging two adjacent ranks keeps all the "
                 "content, removing entities loses it. Try merging ranks first.")
 
+    vertical = orientation_of(spec) == "vertical"
     used = {"relations": set(), "evidence": set(), "roles": set(), "comp_types": set()}
 
     out = []
@@ -780,9 +848,18 @@ def render(spec, variant="journal"):
                  f"L{x2:.1f},{lane:.1f} L{x2:.1f},{ey:.1f}")
             label_at = ((x1 + x2) / 2.0, lane - 9.0)
         elif kind == "flow":
-            mx = (x1 + ex) / 2.0
-            d = f"M{x1:.1f},{y1:.1f} L{mx:.1f},{y1:.1f} L{mx:.1f},{ey:.1f} L{ex:.1f},{ey:.1f}"
-            ang = 0.0 if abs(ex - mx) > 1 else math.atan2(ey - y1, 0.001)
+            if vertical:
+                x1, y1 = a.cx, a.y + a.h
+                x2, y2 = b.cx, b.y
+                ey, ex = y2 - shrink, x2
+                my = (y1 + ey) / 2.0
+                d = (f"M{x1:.1f},{y1:.1f} L{x1:.1f},{my:.1f} "
+                     f"L{x2:.1f},{my:.1f} L{x2:.1f},{ey:.1f}")
+                ang = math.pi / 2.0
+            else:
+                mx = (x1 + ex) / 2.0
+                d = f"M{x1:.1f},{y1:.1f} L{mx:.1f},{y1:.1f} L{mx:.1f},{ey:.1f} L{ex:.1f},{ey:.1f}"
+                ang = 0.0 if abs(ex - mx) > 1 else math.atan2(ey - y1, 0.001)
         else:
             dx, dy = ex - x1, ey - y1
             k = 0.32
@@ -804,6 +881,8 @@ def render(spec, variant="journal"):
             out.append(head("catalysis", mid_x, mid_y,
                             math.atan2(mid_y - my, mid_x - mx), colour, stroke_w))
         if rel.get("label"):
+            if vertical and kind == "flow" and not label_at:
+                label_at = (x2 + 6.0, (y1 + ey) / 2.0 - 4.0)
             lx, ly = label_at or ((x1 + ex) / 2.0, (y1 + ey) / 2.0 - 8.0)
             out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="{font*0.8:.1f}" text-anchor="middle" '
                        f'fill="{colour}">{esc(rel["label"])}</text>')
@@ -814,7 +893,10 @@ def render(spec, variant="journal"):
         nsw = sw * (1.3 if n.role == "contribution" else 1.0)
         used["roles"].add(n.role)
         out.append(entity_shape(n, colour, nsw))
-        if n.has_icon:
+        if n.pictorial and not n.has_icon:
+            out.append(f'<text x="{n.cx:.1f}" y="{n.y + ICON_H + font*1.1:.1f}" '
+                       f'font-size="{font:.1f}" text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
+        elif n.has_icon:
             art = n.spec["asset"]["_svg"]
             if n.role != "contribution":
                 # A library icon arrives with its own palette. Colour encodes

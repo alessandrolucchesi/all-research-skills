@@ -18,6 +18,29 @@ These are refusals, not preferences. Violating any of them produces a figure tha
 5. **No relation without an evidence level.** Every arc carries `evidence`. The compiler refuses to render otherwise. This is the discipline that keeps a hypothesis visually distinct from a demonstrated mechanism.
 6. **Band A figures must balance.** Participant flow diagrams fail compilation if the counts do not sum at every level.
 
+## Entity ontology
+
+Two axes, kept apart. Conflating them is what broke v0.2: `cell` meant both "a cell" and "a pictogram goes here", so an entity with no icon lost its semantics and the author's rational move was to relabel it a macromolecule to obtain a clean box.
+
+**Class**, what the thing is, by scale. Molecular: `small_molecule`, `macromolecule`, `nucleic_acid`, `complex`. Cellular and structural: `organelle`, `cell`, `cell_population`, `tissue`, `organ`, `organism`. Process and state: `process`, `state`, `measure`. Procedural: `step`, `intervention`. And `unspecified`, which means an identity the author declines to state and nothing else. Reach for it rarely: a clone is a `cell_population`, a resistance or a pressure is a `measure`, a confirmed diagnosis is a `state`, a drug or a device is an `intervention`.
+
+**Depiction**, how it is drawn: `auto`, `geometric` or `pictogram`. The class proposes, the spec disposes.
+
+**Substitution rule: generalise up, never sideways.** When the exact asset is missing, an asset for a more general term may stand in and the label carries the identity: a generic cell for a megakaryocyte is honest, because the label says which cell. A coordinate term never may: a basophil for a neutrophil is a misstatement, not an approximation. Each class carries a short curated list of acceptable generic assets, because no lexical rule can tell a generic from a qualified sibling ("blood-cells" is a legitimate stand-in for a neutrophil, "cancerous-cell_nuclei" is not, and nothing in the two strings says which).
+
+**Adaptation is allowed and recorded.** Every licence the gate admits permits derivatives, which is what makes recolouring, scaling, mirroring, cropping, composition and generic substitution legitimate. Each is written to `provenance.assets[].adaptations` and surfaces in the credit line as "Adapted from ... Changes: ...", which CC BY requires anyway. Classes with no library match fall back to a built-in generic glyph drawn by this project, so no entity is ever reduced to an anonymous box for want of an icon.
+
+## Output
+
+The format follows the kind of figure, not a preference. Diagrams and flows, the figures co-authors revise, export to **PPTX with native shapes and connectors**, because revision is where a figure lives and nobody revises an SVG. Pictographic representations export to **SVG plus PNG**, where the artwork is the content and editability buys nothing. Both come from the same layout, so they cannot drift.
+
+```
+python render/figure_export.py spec.yaml --resolve-assets
+python render/figure_export.py spec.yaml --formats svg,png,pptx
+```
+
+Decision procedures and reporting flows are laid out down the page, not across it; `meta.orientation` overrides.
+
 ## Workflow
 
 1. **Classify.** Determine the normative band (A, B, C) and the figure class from `references/01-figure-taxonomy.md`. The band decides how much latitude the renderer has and which validator runs.
@@ -78,6 +101,9 @@ Every glyph is sized from one text-metrics function. The `process` class is the 
 - `schema/figure-spec.schema.json` — the intermediate representation
 - `assets/sources.json` — open asset registry and licence gate
 - `assets/figure-lexicon-v0.1.svg` — rendered reference plate of the lexicon
+- `render/ontology.py` — entity classes, depiction, substitution rule, generic glyphs
 - `render/asset_resolver.py` — pictogram resolution, licence gate, vector gate
+- `render/figure_export.py` — SVG, PNG and PPTX output
 - `examples/moa-example.yaml` — worked specification
-- `examples/pictogram-example.yaml` — resolved pictograms, lane routing, desaturation
+- `examples/pictogram-example.yaml` — resolved pictograms, generic substitution, lane routing
+- `examples/algorithm-example.yaml` — vertical clinical algorithm, PPTX output

@@ -27,11 +27,13 @@ The figure above is compiled entirely from `examples/moa-example.yaml`, with no 
 
 ## Status and limitations
 
-Version 0.2, after the first production use. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
+Version 0.3, after the first production use. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
 
-New in 0.2: pictogram resolution against Bioicons and Health Icons, with a vector gate alongside the licence gate and exact-match-only auto-acceptance; one text-metrics function for every glyph; a `step` class distinct from the SBGN `process`; arcs diverted into a clear lane by geometric intersection rather than by rank distance; desaturation of canonical pictograms applied to colour values; a refusal message that names the binding constraint.
+New in 0.2: pictogram resolution against Bioicons and Health Icons, with a vector gate alongside the licence gate; one text-metrics function for every glyph; arcs diverted into a clear lane by geometric intersection rather than by rank distance; desaturation of canonical pictograms applied to colour values; a refusal message that names the binding constraint.
 
-Known limits: output is SVG only, so a figure that co-authors must revise still leaves the pipeline; there are no panels, which makes "split the figure" advice the tool cannot execute; NIH BioArt, SciDraw, Open Science Art and PhyloPic have no machine index wired and are resolved by hand through `asset:`; relation labels are placed without collision avoidance except on lane-routed arcs; the lexicon has no glyph class for a measured physiological quantity, which currently falls back to `unspecified`.
+New in 0.3: a sixteen-class entity ontology organised by scale, separated from a depiction axis, so a clone is a `cell_population` and a resistance is a `measure` instead of both collapsing into `unspecified`; generic substitution governed by generalise-up-never-sideways with a curated per-class allow list; an adaptation ledger that records every derivative transformation and folds it into the credit line; built-in generic glyphs so no entity is drawn as an anonymous box; a vertical reading axis for decision procedures; and PPTX output with native shapes for the figures co-authors revise.
+
+Known limits: there are no panels, which makes "split the figure" advice the tool cannot execute; NIH BioArt, SciDraw, Open Science Art and PhyloPic have no machine index wired and are resolved by hand through `asset:`; relation labels are placed without collision avoidance except on lane-routed and vertical-flow arcs; the PPTX connectors are straight lines rather than the SVG's routed paths.
 
 ## Citing
 
@@ -50,7 +52,10 @@ assets/sources.json                   open asset registry and licence gate
 assets/figure-lexicon-v0.1.svg        rendered reference plate
 render/asset_resolver.py              pictogram resolution, licence and vector gates
 examples/moa-example.yaml             worked specification
-examples/pictogram-example.yaml       resolved pictograms and lane routing
+render/ontology.py                    entity classes, depiction, generic glyphs
+render/figure_export.py               SVG, PNG and PPTX output
+examples/pictogram-example.yaml       resolved pictograms and generic substitution
+examples/algorithm-example.yaml       vertical clinical algorithm, PPTX output
 examples/moa-example.journal.svg      its compiled output
 CITATION.cff                          citation metadata
 LICENSE / LICENSING.md                MIT for code, CC BY 4.0 for the plates

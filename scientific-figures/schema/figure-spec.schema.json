@@ -80,6 +80,15 @@
           "default": [
             "journal"
           ]
+        },
+        "orientation": {
+          "enum": [
+            "auto",
+            "horizontal",
+            "vertical"
+          ],
+          "default": "auto",
+          "description": "Reading axis. Auto sends decision procedures and reporting flows down the page."
         }
       }
     },
@@ -133,17 +142,22 @@
           },
           "class": {
             "enum": [
+              "small_molecule",
               "macromolecule",
               "nucleic_acid",
-              "small_molecule",
               "complex",
-              "unspecified",
+              "organelle",
               "cell",
+              "cell_population",
               "tissue",
               "organ",
-              "subject",
+              "organism",
+              "process",
+              "state",
+              "measure",
               "step",
-              "process"
+              "intervention",
+              "unspecified"
             ],
             "description": "step is a labelled box in an algorithm or study design; process is the SBGN square carried on an arc, with its label beside it. Pictogram classes (cell, tissue, organ, subject) resolve against the asset registry."
           },
@@ -206,6 +220,22 @@
           "count": {
             "type": "integer",
             "description": "Band A only: participant count at this node"
+          },
+          "depiction": {
+            "enum": [
+              "auto",
+              "geometric",
+              "pictogram"
+            ],
+            "default": "auto",
+            "description": "Overrides the class default. The class says what the entity is; this says how it is drawn."
+          },
+          "synonyms": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Extra search terms for asset resolution. They widen the search, never the meaning: never name a coordinate term here."
           }
         }
       }
@@ -357,6 +387,13 @@
         "attribution": {
           "type": "string",
           "description": "Rendered from the source attribution_template"
+        },
+        "adaptations": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          },
+          "description": "Derivative transformations applied, recorded because CC BY requires changes to be indicated."
         }
       }
     }
