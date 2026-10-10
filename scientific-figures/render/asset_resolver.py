@@ -254,8 +254,14 @@ def score(hit, term):
             best = max(best, 82 + weight)
         elif len(term) >= 4 and term in cand:
             best = max(best, 58 + weight)
+        elif cw and set(cw).issubset(set(tw)):
+            # The candidate drops a qualifier from the query: "megakaryocyte"
+            # against "clonal megakaryocyte". This is the most useful match
+            # there is and it must outrank a class-level generic, which is
+            # what sent two different entities to one blood-cells glyph.
+            best = max(best, 92 + weight)
         elif len(cand) >= 4 and cand in term:
-            best = max(best, 44 + weight)
+            best = max(best, 60 + weight)
     for t in tags:
         if t == term:
             best = max(best, 76)
@@ -287,9 +293,11 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             # attribution bookkeeping. Servier, mirrored in Bioicons, is
             # genuine vector and carries the widest clinical coverage, so it
             # ranks immediately after.
-            bonus = 6 if hit["source_id"] == "health-icons" else (4 if hit.get("author") == "Servier" else 0)
+            # Source rank only breaks ties. Attribution is a line of text; a
+            # glyph that says the wrong thing is a wrong claim.
+            bonus = 2 if hit["source_id"] == "health-icons" else (2 if hit.get("author") == "Servier" else 0)
             if prefer_source and hit["source_id"] == prefer_source:
-                bonus += 5
+                bonus += 1
             ranked.append((best + bonus, hit))
     ranked.sort(key=lambda r: -r[0])
 

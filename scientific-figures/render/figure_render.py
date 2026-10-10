@@ -595,6 +595,7 @@ def resolve_spec_assets(spec, strict=False):
     msgs = []
     target = spec["meta"]["target"]
     prov = spec.setdefault("provenance", {}).setdefault("assets", [])
+    used_assets = {}    # asset_id -> (entity id, score)
     prefer = None       # once one family is used, prefer it: mixing a flat
                         # pictogram set with a detailed illustration set reads
                         # as two figures spliced together
@@ -605,8 +606,26 @@ def resolve_spec_assets(spec, strict=False):
             e.get("label", e["id"]), target=target,
             synonyms=e.get("synonyms"), cls=e.get("class"),
             prefer_source=prefer)
+        if accepted and accepted[0]["asset_id"] in used_assets:
+            prev_id, prev_score = used_assets[accepted[0]["asset_id"]]
+            if accepted[0]["score"] <= prev_score:
+                msgs.append(
+                    f"error: entity {e['id']}: would reuse the asset already given to "
+                    f"{prev_id}; two entities drawn with one glyph say they are the same "
+                    f"thing. Falling back to the generic glyph for class '{e['class']}'. "
+                    f"Set `asset:` explicitly, or add a synonym, to give it one of its own.")
+                accepted = []
+            else:
+                msgs.append(
+                    f"error: entity {prev_id}: its asset is a better match for {e['id']}; "
+                    f"{prev_id} falls back to its class generic glyph.")
+                for ent in spec["entities"]:
+                    if ent["id"] == prev_id:
+                        ent.pop("asset", None)
+                prov[:] = [a for a in prov if a.get("asset_id") != accepted[0]["asset_id"]]
         if accepted:
             a = accepted[0]
+            used_assets[a["asset_id"]] = (e["id"], a["score"])
             e["asset"] = a
             prefer = prefer or a["source_id"]
             prov.append({k: v for k, v in a.items() if k not in ("svg", "score")})
@@ -773,7 +792,7 @@ def render(spec, variant="journal"):
 
     out = []
     out.append("")  # placeholder for the opening tag
-    out.append(f'<rect x="0" y="0" width="{width:.0f}" height="{height:.0f}" fill="#ffffff"/>')
+    out.append("")  # placeholder for the background, sized once the canvas is final
 
     # compartments, outermost first
     for cid, r in sorted(rects.items(), key=lambda kv: kv[1]["depth"]):
@@ -898,13 +917,20 @@ def render(spec, variant="journal"):
                        f'font-size="{font:.1f}" text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
         elif n.has_icon:
             art = n.spec["asset"]["_svg"]
+            # Health Icons and others paint with fill="currentColor", which no
+            # rewrite of colour values can touch. Without an explicit colour on
+            # the wrapper it inherits black, so a canonical pictogram arrived at
+            # full strength however carefully the hex values were lightened.
+            ink = accent if n.role == "contribution" else "#6e6e6e"
             if n.role != "contribution":
                 # A library icon arrives with its own palette. Colour encodes
                 # narrative role here, so a canonical pictogram is desaturated
                 # rather than allowed to spend the channel.
                 art = desaturate_svg(art)
-            out.append(embed_svg(art, n.x, n.y, n.w, ICON_H,
-                                 re.sub(r"[^A-Za-z0-9]", "", n.id)))
+            out.append(f'<g color="{ink}">'
+                       + embed_svg(art, n.x, n.y, n.w, ICON_H,
+                                   re.sub(r"[^A-Za-z0-9]", "", n.id))
+                       + '</g>')
             out.append(f'<text x="{n.cx:.1f}" y="{n.y + ICON_H + font*1.1:.1f}" '
                        f'font-size="{font:.1f}" text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
         elif n.cls == "process":
@@ -927,6 +953,10 @@ def render(spec, variant="journal"):
         out.append(legend_svg)
 
     total_h = height + legend_h
+    # Written last: the lane router and the legend both grow the canvas after
+    # the glyphs are laid out, and a background sized before them leaves the
+    # lower part of the figure transparent.
+    out[1] = f'<rect x="0" y="0" width="{width:.0f}" height="{total_h:.0f}" fill="#ffffff"/>' 
     out[0] = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width:.0f} {total_h:.0f}" '
               f'{size_attrs(cfg, width, total_h)} font-family="Helvetica, Arial, sans-serif">')
     out.append("</svg>")

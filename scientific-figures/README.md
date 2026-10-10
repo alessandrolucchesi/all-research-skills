@@ -31,9 +31,11 @@ Version 0.3, after the first production use. The renderer covers band B (mechani
 
 New in 0.2: pictogram resolution against Bioicons and Health Icons, with a vector gate alongside the licence gate; one text-metrics function for every glyph; arcs diverted into a clear lane by geometric intersection rather than by rank distance; desaturation of canonical pictograms applied to colour values; a refusal message that names the binding constraint.
 
+New in 0.3.1: specificity now outranks source cleanliness in the resolver, two entities can no longer be drawn with one glyph, imported icons painted with currentColor are actually desaturated, and the background covers the whole canvas.
+
 New in 0.3: a sixteen-class entity ontology organised by scale, separated from a depiction axis, so a clone is a `cell_population` and a resistance is a `measure` instead of both collapsing into `unspecified`; generic substitution governed by generalise-up-never-sideways with a curated per-class allow list; an adaptation ledger that records every derivative transformation and folds it into the credit line; built-in generic glyphs so no entity is drawn as an anonymous box; a vertical reading axis for decision procedures; and PPTX output with native shapes for the figures co-authors revise.
 
-Known limits: there are no panels, which makes "split the figure" advice the tool cannot execute; NIH BioArt, SciDraw, Open Science Art and PhyloPic have no machine index wired and are resolved by hand through `asset:`; relation labels are placed without collision avoidance except on lane-routed and vertical-flow arcs; the PPTX connectors are straight lines rather than the SVG's routed paths.
+Known limits: there are no panels, which makes "split the figure" advice the tool cannot execute; NIH BioArt, SciDraw, Open Science Art and PhyloPic have no machine index wired and are resolved by hand through `asset:`; relation labels are placed without collision avoidance except on lane-routed and vertical-flow arcs; the PPTX export is not yet a faithful copy of the figure: routed arcs are flattened to straight connectors and the legend is not reproduced. Each deck now carries a visible note listing what it omits, and the exporter prints the same list, so an editable artefact cannot be mistaken for the figure of record.
 
 ## Citing
 

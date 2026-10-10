@@ -98,7 +98,25 @@ def _dash(connector, evidence):
         connector.line.dash_style = style
 
 
-def to_pptx(spec, path, width_mm=MM_PER_UNIT_DEFAULT, variant="journal"):
+def parity_report(spec, nodes, pictures, routed, legend_in_pptx):
+    """What the deck does not reproduce from the figure.
+
+    The editable artefact is the one that circulates, and a co-author cannot
+    tell "the author drew it badly" from "the export lost it". So the deck
+    declares its own divergence, on the slide, until export parity lands.
+    """
+    gaps = []
+    want_pics = sum(1 for n in nodes if n.spec.get("asset", {}).get("_svg"))
+    if want_pics > pictures:
+        gaps.append(f"{want_pics - pictures} of {want_pics} pictograms not placed")
+    if routed:
+        gaps.append(f"{routed} routed arc{'s' if routed > 1 else ''} flattened to straight lines")
+    if not legend_in_pptx:
+        gaps.append("legend not reproduced")
+    return gaps
+
+
+def to_pptx(spec, path, width_mm=MM_PER_UNIT_DEFAULT, variant="journal", note_divergence=True):
     from pptx import Presentation
     from pptx.enum.shapes import MSO_CONNECTOR, MSO_SHAPE
     from pptx.util import Mm, Pt
@@ -210,8 +228,26 @@ def to_pptx(spec, path, width_mm=MM_PER_UNIT_DEFAULT, variant="journal"):
         except Exception:
             pass
 
+    # Count what the SVG would have routed: any arc the renderer diverts into
+    # a lane is a straight preset connector here.
+    routed = 0
+    for rel in spec.get("relations", []):
+        a, b = by_id.get(rel["from"]), by_id.get(rel["to"])
+        if a and b and rel.get("type") != "flow" and abs(a.rank - b.rank) > 1:
+            routed += 1
+    pictures = sum(1 for sh in slide.shapes if sh.shape_type is not None
+                   and sh.__class__.__name__ == "Picture")
+    gaps = parity_report(spec, nodes, pictures, routed, legend_in_pptx=False)
+    if gaps and note_divergence:
+        tb = slide.shapes.add_textbox(X(0), Mm(height_mm) - Mm(6), X(w_units), Mm(5.5))
+        tf = tb.text_frame
+        tf.text = "Export preview, not the figure: " + "; ".join(gaps) + "."
+        pr = tf.paragraphs[0]
+        pr.font.size = Pt(7)
+        pr.font.italic = True
+        pr.font.color.rgb = _rgb("#b3261e")
     prs.save(path)
-    return path
+    return path, gaps
 
 
 def _icon_png(node):
@@ -243,6 +279,8 @@ def main():
     ap.add_argument("--formats", help="comma separated: svg,png,pptx (default: by figure class)")
     ap.add_argument("--variant", choices=sorted(FR.VARIANTS), default="journal")
     ap.add_argument("--resolve-assets", action="store_true")
+    ap.add_argument("--no-divergence-note", action="store_true",
+                    help="omit the on-slide note about what the deck does not reproduce")
     args = ap.parse_args()
 
     spec = FR.load_spec(args.spec)
@@ -271,7 +309,15 @@ def main():
     if "png" in formats:
         made.append(to_png(svg_path, f"{stem}.png"))
     if "pptx" in formats:
-        made.append(to_pptx(spec, f"{stem}.pptx", variant=args.variant))
+        out_path, gaps = to_pptx(spec, f"{stem}.pptx", variant=args.variant,
+                                 note_divergence=not args.no_divergence_note)
+        made.append(out_path)
+        if gaps:
+            print("PARITY: the deck is not a faithful copy of the figure:", file=sys.stderr)
+            for g in gaps:
+                print(f"  - {g}", file=sys.stderr)
+            print("  The slide carries a visible note saying so. Send the SVG or PDF "
+                  "as the figure of record.", file=sys.stderr)
     for m in made:
         print(f"wrote {m}")
 
