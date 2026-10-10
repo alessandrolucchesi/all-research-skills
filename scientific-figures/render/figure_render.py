@@ -78,10 +78,32 @@ except Exception:
     sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
     from ontology import (ONTOLOGY, PICTOGRAM_CLASSES, depiction_of,  # noqa
                           generic_glyph)
+try:
+    from .style import COMPARTMENT_TINT, PROMINENCE, Palette, prominence_of  # noqa
+except Exception:
+    from style import COMPARTMENT_TINT, PROMINENCE, Palette, prominence_of  # noqa
 
 BASE_FONT = 15.0
 ICON_H = 46.0           # vertical room a resolved pictogram adds to a node
 PROCESS_SIDE = 22.0     # SBGN process square, drawn on the arc, not around text
+
+
+def wrap_label(text, max_chars=30):
+    """Greedy wrap. Keeps a short label on one line and lets a long one grow
+    downwards instead of stretching its column."""
+    if not text:
+        return []
+    words, lines, cur = str(text).split(), [], ""
+    for w in words:
+        trial = (cur + " " + w).strip()
+        if len(trial) > max_chars and cur:
+            lines.append(cur)
+            cur = w
+        else:
+            cur = trial
+    if cur:
+        lines.append(cur)
+    return lines
 
 
 def text_width(s, font=BASE_FONT):
@@ -108,6 +130,7 @@ def text_width(s, font=BASE_FONT):
 GUTTER = 78.0       # horizontal clearance between rank columns
 COL_W = 210.0
 ROW_H = 86.0
+ROW_GAP = 30.0      # clear space between two nodes stacked in the same rank
 NODE_H = 40.0
 NODE_MIN_W = 96.0
 PAD = 26.0          # padding inside a compartment box
@@ -238,27 +261,41 @@ def validate(spec, sources=None):
 
 class Node:
     __slots__ = ("id", "label", "cls", "comp", "role", "spec", "x", "y", "w", "h",
-                 "rank", "row", "modifier", "has_icon", "pictorial")
+                 "rank", "row", "modifier", "has_icon", "pictorial",
+                 "qualifier", "lines", "qlines", "prom", "fsc")
 
-    def __init__(self, e, font=BASE_FONT):
+    def __init__(self, e, font=BASE_FONT, max_chars=30):
         self.modifier = False
         self.id = e["id"]
+        fam = ONTOLOGY.get(e.get("class", "unspecified"), {}).get("family", "unknown")
+        self.prom = prominence_of(e, fam)
+        psw, pf, ppad = PROMINENCE[self.prom]
+        self.fsc = pf
         self.label = e.get("label", e["id"])
         self.cls = e.get("class", "unspecified")
         self.comp = e.get("compartment")
         self.role = e.get("role", "canonical")
         self.spec = e
+        self.qualifier = e.get("qualifier") or ""
         self.has_icon = bool(e.get("asset", {}).get("_svg"))
         # A pictorial entity always gets icon room: with a resolved asset it
         # holds the icon, without one it holds this class's generic glyph.
         # Nothing is reduced to an anonymous box for want of an asset.
         self.pictorial = depiction_of(e) == "pictogram"
-        tw = text_width(self.label, font)
+        # Wrap: a published algorithm box carries far more than three words
+        # (the BJH thrombocytosis algorithm runs to about twenty-five), so a
+        # label is wrapped rather than allowed to set the column width.
+        self.lines = wrap_label(self.label, max_chars)
+        self.qlines = wrap_label(self.qualifier, int(max_chars * 1.25)) if self.qualifier else []
+        ef = font * pf
+        tw = max([text_width(l, ef) for l in self.lines] +
+                 [text_width(l, ef * 0.78) for l in self.qlines] + [0.0])
         if self.cls == "process":
             self.w = max(NODE_MIN_W, PROCESS_SIDE + 10.0 + tw + 24.0)
         else:
-            self.w = max(NODE_MIN_W, tw + 30.0)
-        self.h = NODE_H + (ICON_H if (self.has_icon or self.pictorial) else 0.0)
+            self.w = max(NODE_MIN_W, tw + 30.0 * ppad)
+        body = max(NODE_H, ef * 1.5 * len(self.lines) + ef * 1.15 * len(self.qlines) + 16.0)
+        self.h = body + (ICON_H if (self.has_icon or self.pictorial) else 0.0)
         self.x = self.y = 0.0
         self.rank = 0
         self.row = 0
@@ -440,12 +477,15 @@ def layout_horizontal(spec, gutter=GUTTER, font=BASE_FONT):
         for n in sorted(members, key=lambda m: (m.rank, m.id)):
             lanes.setdefault(n.rank, []).append(n)
         top = y + (62.0 if mods else 0.0)
-        rows = max((len(v) for v in lanes.values()), default=1)
+        lane_bottom = top
         for rk, group in lanes.items():
-            for k, n in enumerate(group):
+            cy = top
+            for n in group:
                 n.x = MARGIN + PAD + colx[rk]
-                n.y = top + k * ROW_H
-        y = top + rows * ROW_H + 20.0
+                n.y = cy
+                cy += n.h + ROW_GAP
+            lane_bottom = max(lane_bottom, cy - ROW_GAP)
+        y = lane_bottom + 24.0
     for n in nodes:
         if n.modifier:
             t = by_id[mod_target[n.id]]
@@ -669,16 +709,28 @@ def seg_hits_node(x1, y1, x2, y2, node, pad=8.0):
 
 
 def clear_lane(a, b, nodes, below=True):
-    """Find a horizontal lane between a and b that no other glyph occupies."""
+    """Find a lane between a and b that no other glyph occupies.
+
+    The whole route is tested, not just the horizontal run: the two vertical
+    drops that join the lane to its endpoints cross the same space, and a
+    feedback arc was passing straight through a process glyph that sat
+    directly under its origin.
+    """
     others = [n for n in nodes if n is not a and n is not b]
+    edge_a = (a.y + a.h) if below else a.y
+    edge_b = (b.y + b.h) if below else b.y
     lane = (max(a.y + a.h, b.y + b.h) + 30.0) if below else (min(a.y, b.y) - 30.0)
     stride = 22.0 if below else -22.0
     lo, hi = min(a.cx, b.cx), max(a.cx, b.cx)
-    for _ in range(6):
-        if not any(seg_hits_node(lo, lane, hi, lane, n, pad=6.0) for n in others):
-            return lane
+    start = lane
+    for _ in range(10):
+        clash = (any(seg_hits_node(lo, lane, hi, lane, n, pad=6.0) for n in others)
+                 or any(seg_hits_node(a.cx, edge_a, a.cx, lane, n, pad=4.0) for n in others)
+                 or any(seg_hits_node(b.cx, edge_b, b.cx, lane, n, pad=4.0) for n in others))
+        if not clash:
+            return lane, abs(lane - start)
         lane += stride
-    return lane
+    return lane, abs(lane - start)
 
 
 def head(kind, x, y, angle, colour, sw, filled=True):
@@ -702,44 +754,48 @@ def head(kind, x, y, angle, colour, sw, filled=True):
     return g
 
 
-def entity_shape(n, colour, sw):
+def entity_shape(n, colour, sw, fill="#ffffff"):
     x, y, w, h = n.x, n.y, n.w, n.h
     dash = ""
     if n.cls == "macromolecule":
-        return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="9" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>'
+        return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="9" fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>'
     if n.cls == "nucleic_acid":
         r = 12
         return (f'<path d="M{x:.1f},{y:.1f} h{w:.1f} v{h-r:.1f} a{r},{r} 0 0 1 -{r},{r} '
-                f'h-{w-2*r:.1f} a{r},{r} 0 0 1 -{r},-{r} z" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+                f'h-{w-2*r:.1f} a{r},{r} 0 0 1 -{r},-{r} z" fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>')
     if n.cls == "small_molecule":
-        return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{h/2:.1f}" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>'
+        return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="{h/2:.1f}" fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>'
     if n.cls == "complex":
         c = 11
         return (f'<path d="M{x+c:.1f},{y:.1f} h{w-2*c:.1f} l{c},{c} v{h-2*c:.1f} l-{c},{c} '
-                f'h-{w-2*c:.1f} l-{c},-{c} v-{h-2*c:.1f} z" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+                f'h-{w-2*c:.1f} l-{c},-{c} v-{h-2*c:.1f} z" fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>')
     if n.cls == "process":
         # SBGN sense: a small square carried on the arc. The label sits beside
         # it, never inside it, so it cannot overflow.
         sq = PROCESS_SIDE
         return (f'<rect x="{x:.1f}" y="{n.cy - sq/2:.1f}" width="{sq:.1f}" height="{sq:.1f}" '
-                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+                f'fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>')
     if n.cls == "step":
         return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="4" '
-                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+                f'fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>')
     if n.cls == "state":
         # A clinical state or phenotype: a tag, clipped at the leading corner.
         c = 13
         return (f'<path d="M{x+c:.1f},{y:.1f} h{w-c:.1f} v{h:.1f} h-{w-c:.1f} '
-                f'l-{c},-{h/2:.1f} z" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>')
+                f'l-{c},-{h/2:.1f} z" fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>')
     if n.cls == "measure":
         # A measured quantity: a box carrying a short scale on its lower edge.
         t = "".join(f'<path d="M{x + w*k:.1f},{y+h:.1f} v-5" stroke="{colour}" '
                     f'stroke-width="{sw*0.8:.1f}"/>' for k in (0.25, 0.5, 0.75))
         return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="3" '
-                f'fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>' + t)
+                f'fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>' + t)
     if n.cls in PICTOGRAM_CLASSES:
-        if n.has_icon:
-            return ""   # the resolved icon is the glyph; no box around it
+        # Always one bounded container, whether the art inside is a resolved
+        # pictogram or this class's generic glyph. Left loose above a bare
+        # caption the icon reads as decoration standing beside the diagram
+        # rather than as the entity itself.
+        return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="10" '
+                f'fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>')
         # Nothing resolved: draw this class's generic glyph. Never a dashed
         # box, which means "unspecified", and never a plain rectangle, which
         # tells the reader nothing the label has not already said.
@@ -762,7 +818,8 @@ def type_budget(spec, cfg, width_units):
 
 def render(spec, variant="journal"):
     cfg = VARIANTS[variant]
-    accent = spec["meta"].get("accent_colour", "#0b6ea8")
+    pal = Palette(spec)
+    accent = pal.accent
     font = cfg["font"]
     sw = cfg["stroke"]
 
@@ -798,8 +855,9 @@ def render(spec, variant="journal"):
     for cid, r in sorted(rects.items(), key=lambda kv: kv[1]["depth"]):
         used["comp_types"].add(r["type"])
         if r["type"] == "physical":
+            tint = COMPARTMENT_TINT[min(r["depth"], len(COMPARTMENT_TINT) - 1)]
             out.append(f'<rect x="{r["x"]:.1f}" y="{r["y"]:.1f}" width="{r["w"]:.1f}" height="{r["h"]:.1f}" '
-                       f'rx="14" fill="{TINT}" stroke="{INK}" stroke-width="{sw:.1f}"/>')
+                       f'rx="14" fill="{tint}" stroke="{INK}" stroke-width="{sw:.1f}"/>')
         else:
             out.append(f'<rect x="{r["x"]:.1f}" y="{r["y"]:.1f}" width="{r["w"]:.1f}" height="{r["h"]:.1f}" '
                        f'rx="14" fill="none" stroke="{INK}" stroke-width="{sw:.1f}" stroke-dasharray="8 6"/>')
@@ -818,13 +876,8 @@ def render(spec, variant="journal"):
         used["evidence"].add(ev)
         used["roles"].add(role)
 
-        colour = accent if role == "contribution" else CANONICAL if ev == "established" else INK
-        if role == "contribution":
-            stroke_w = sw * 1.45
-        elif ev == "established":
-            stroke_w = sw * 0.85
-        else:
-            stroke_w = sw
+        colour, wmul = pal.relation(rel)
+        stroke_w = sw * wmul
         dash = DASH.get(ev)
         dash_attr = f' stroke-dasharray="{dash}"' if dash else ""
         if kind == "transport":
@@ -848,11 +901,17 @@ def render(spec, variant="journal"):
             # Feedback below, long forward arcs above, so the two stay
             # distinguishable. Fall back to below if the upper lane would
             # leave the canvas.
-            below = back_edge
-            lane = clear_lane(a, b, nodes, below=below)
-            if not below and lane < 16.0:
-                below = True
-                lane = clear_lane(a, b, nodes, below=True)
+            # Try both sides and take the shorter detour. Committing to one
+            # side and pushing until it clears drags the arc far past the
+            # figure and leaves a void the size of the excursion.
+            lane_lo, cost_lo = clear_lane(a, b, nodes, below=True)
+            lane_hi, cost_hi = clear_lane(a, b, nodes, below=False)
+            if lane_hi < 16.0:
+                cost_hi = float("inf")
+            if back_edge:
+                cost_lo -= 18.0        # feedback reads better underneath
+            below = cost_lo <= cost_hi
+            lane = lane_lo if below else lane_hi
             x1, x2, ex = a.cx, b.cx, b.cx
             if below:
                 y1, y2 = a.y + a.h, b.y + b.h
@@ -908,37 +967,47 @@ def render(spec, variant="journal"):
 
     # entities
     for n in nodes:
-        colour = accent if n.role == "contribution" else INK
-        nsw = sw * (1.3 if n.role == "contribution" else 1.0)
+        colour, fill = pal.entity(n.spec, n.role)
+        nsw = sw * PROMINENCE[n.prom][0] * (1.3 if n.role == "contribution" and not pal.explanatory else 1.0)
+        nfont = font * n.fsc
         used["roles"].add(n.role)
-        out.append(entity_shape(n, colour, nsw))
-        if n.pictorial and not n.has_icon:
-            out.append(f'<text x="{n.cx:.1f}" y="{n.y + ICON_H + font*1.1:.1f}" '
-                       f'font-size="{font:.1f}" text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
-        elif n.has_icon:
+        out.append(entity_shape(n, colour, nsw, fill))
+
+        if n.has_icon:
             art = n.spec["asset"]["_svg"]
             # Health Icons and others paint with fill="currentColor", which no
-            # rewrite of colour values can touch. Without an explicit colour on
-            # the wrapper it inherits black, so a canonical pictogram arrived at
-            # full strength however carefully the hex values were lightened.
-            ink = accent if n.role == "contribution" else "#6e6e6e"
-            if n.role != "contribution":
-                # A library icon arrives with its own palette. Colour encodes
-                # narrative role here, so a canonical pictogram is desaturated
-                # rather than allowed to spend the channel.
+            # rewrite of colour values can touch; without an explicit colour on
+            # the wrapper the icon inherits black and arrives at full strength.
+            ink = pal.icon_ink(n.spec, n.role)
+            if not pal.keep_icon_colour(n.role):
                 art = desaturate_svg(art)
             out.append(f'<g color="{ink}">'
-                       + embed_svg(art, n.x, n.y, n.w, ICON_H,
+                       + embed_svg(art, n.x + 4, n.y + 4, n.w - 8, ICON_H - 6,
                                    re.sub(r"[^A-Za-z0-9]", "", n.id))
                        + '</g>')
-            out.append(f'<text x="{n.cx:.1f}" y="{n.y + ICON_H + font*1.1:.1f}" '
-                       f'font-size="{font:.1f}" text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
-        elif n.cls == "process":
-            out.append(f'<text x="{n.x + PROCESS_SIDE + 10:.1f}" y="{n.cy + font*0.36:.1f}" '
-                       f'font-size="{font:.1f}" fill="{INK}">{esc(n.label)}</text>')
+        elif n.pictorial:
+            out.append(generic_glyph(n.cls, n.x + 4, n.y + 4, n.w - 8, ICON_H - 6, colour, nsw))
+
+        # label block: name, then qualifier set smaller and lighter beneath it
+        top = n.y + (ICON_H if (n.has_icon or n.pictorial) else 0.0)
+        body_h = n.h - (ICON_H if (n.has_icon or n.pictorial) else 0.0)
+        nlines = len(n.lines) + len(n.qlines) * 0.78
+        ty = top + (body_h - (nlines - 1) * nfont * 1.35) / 2.0 + nfont * 0.34
+        if n.cls == "process":
+            for ln in n.lines:
+                out.append(f'<text x="{n.x + PROCESS_SIDE + 10:.1f}" y="{ty:.1f}" '
+                           f'font-size="{nfont:.1f}" fill="{INK}">{esc(ln)}</text>')
+                ty += nfont * 1.35
         else:
-            out.append(f'<text x="{n.cx:.1f}" y="{n.cy + font*0.36:.1f}" font-size="{font:.1f}" '
-                       f'text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
+            for ln in n.lines:
+                out.append(f'<text x="{n.cx:.1f}" y="{ty:.1f}" font-size="{nfont:.1f}" '
+                           f'text-anchor="middle" fill="{INK}">{esc(ln)}</text>')
+                ty += nfont * 1.35
+            for ln in n.qlines:
+                out.append(f'<text x="{n.cx:.1f}" y="{ty:.1f}" font-size="{nfont*0.78:.1f}" '
+                           f'text-anchor="middle" fill="#6b7780">{esc(ln)}</text>')
+                ty += nfont * 1.05
+
         for i, st in enumerate(n.spec.get("state", []) or []):
             sxc, syc = n.x + 12 + i * 24, n.y
             out.append(f'<circle cx="{sxc:.1f}" cy="{syc:.1f}" r="11" fill="#ffffff" stroke="{colour}" stroke-width="{sw*0.85:.1f}"/>')
@@ -946,6 +1015,8 @@ def render(spec, variant="journal"):
                        f'text-anchor="middle" fill="{INK}">{esc(st.get("label", ""))}</text>')
 
     # legend, mandatory above four lexicon elements
+    if not pal.legend_needs_role():
+        used["roles"] = set()
     n_elements = len(used["relations"]) + len(used["evidence"]) + len(used["roles"])
     legend_h = 0.0
     if n_elements > 4:

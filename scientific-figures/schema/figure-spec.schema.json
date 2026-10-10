@@ -89,6 +89,14 @@
           ],
           "default": "auto",
           "description": "Reading axis. Auto sends decision procedures and reporting flows down the page."
+        },
+        "purpose": {
+          "enum": [
+            "primary_research",
+            "explanatory"
+          ],
+          "default": "primary_research",
+          "description": "What the colour channel is spent on. primary_research: colour encodes narrative role, grey for cited background and one accent for the contribution. explanatory: the figure claims no novelty, so colour is freed for entity identity. Evidence keeps the stroke-pattern channel under both."
         }
       }
     },
@@ -236,6 +244,22 @@
               "type": "string"
             },
             "description": "Extra search terms for asset resolution. They widen the search, never the meaning: never name a coordinate term here."
+          },
+          "qualifier": {
+            "type": "string",
+            "description": "Set smaller and lighter beneath the name: components, units, a defining detail. Shortens the primary label and relieves the width constraint."
+          },
+          "prominence": {
+            "enum": [
+              "primary",
+              "normal",
+              "secondary"
+            ],
+            "description": "Weight channel, not colour: stroke, glyph and type size. Defaults from the ontology family."
+          },
+          "identity": {
+            "type": "string",
+            "description": "Entities sharing this key share an identity hue under purpose explanatory, which is how a figure says the same species appears in two places."
           }
         }
       }

@@ -87,6 +87,17 @@ SYNONYMS = {
 # never the meaning.
 AUTO_ACCEPT = 96
 
+# Catalogue categories that can never depict a biological or clinical entity.
+# "B cell" resolved to typography/B.svg, a drawing of the letter B, because
+# the subset rule saw {"b"} inside {"b","cell"}. A letter is not a
+# generalisation of a lymphocyte; it is a different kind of thing.
+EXCLUDED_CATEGORIES = {"typography", "alphabet", "numbers", "symbols",
+                       "machine_learning", "chemo-_and_bioinformatics",
+                       "safety_symbols", "scientific_graphs"}
+
+# A candidate name this short carries no depictive content of its own.
+MIN_NAME_CHARS = 3
+
 
 def _cache_path(name):
     os.makedirs(CACHE, exist_ok=True)
@@ -287,6 +298,10 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
 
     ranked = []
     for hit in cats:
+        if _norm(hit.get("category", "")).replace(" ", "_") in EXCLUDED_CATEGORIES:
+            continue
+        if len(_norm(hit["name"]).replace(" ", "")) < MIN_NAME_CHARS:
+            continue
         best = max((score(hit, t) for t in terms), default=0)
         if best:
             # Health Icons first on equal merit: CC0 means no composite-level

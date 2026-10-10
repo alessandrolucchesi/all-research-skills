@@ -18,6 +18,26 @@ These are refusals, not preferences. Violating any of them produces a figure tha
 5. **No relation without an evidence level.** Every arc carries `evidence`. The compiler refuses to render otherwise. This is the discipline that keeps a hypothesis visually distinct from a demonstrated mechanism.
 6. **Band A figures must balance.** Participant flow diagrams fail compilation if the counts do not sum at every level.
 
+## Purpose decides what colour is for
+
+`meta.purpose` is the first thing to settle, because it assigns the colour budget.
+
+`primary_research` (the default) keeps the original rule: colour encodes narrative role, neutral grey for cited background and one accent for the contribution of this work. A figure that claims something needs that channel, and it is what keeps a hypothesis from being drawn as a finding.
+
+`explanatory` is for a figure that claims no novelty, the ordinary review mechanism figure. There colour is freed for entity identity, assigned from a fixed deuteranopia-safe palette, with entities sharing an `identity` key sharing a hue. This is what published mechanism figures do, and applying the role rule to such a figure spends the whole colour budget on a channel it does not use, which is why review output otherwise reads as a wireframe.
+
+Under both purposes: one variable per channel, evidence always on stroke pattern (a proposed link is dotted in a review figure too, the honesty channel is never the one traded away), arcs stay neutral so the reader does not hunt for a meaning in a tinted arc, and the greyscale and deuteranopia checks still apply.
+
+## Composition devices
+
+`qualifier` on an entity is set smaller and lighter beneath the name: components, units, a defining detail. It is how a published figure separates the thing from its parts, and it shortens the primary label, which relieves the width constraint.
+
+`prominence`, three levels, is a weight channel: stroke, glyph and type size, defaulting from the ontology family so an organ is not drawn at the size of a metabolite. It is not colour, so the colour rule is untouched.
+
+Labels wrap rather than stretch their column. A published algorithm box carries far more than three words.
+
+A pictorial entity is always one bounded container with the art inside it and the label beneath, whether the art is a resolved pictogram or the class's generic glyph. An icon left loose above a bare caption reads as decoration standing beside the diagram rather than as the entity.
+
 ## Entity ontology
 
 Two axes, kept apart. Conflating them is what broke v0.2: `cell` meant both "a cell" and "a pictogram goes here", so an entity with no icon lost its semantics and the author's rational move was to relabel it a macromolecule to obtain a clean box.
