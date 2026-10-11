@@ -27,9 +27,11 @@ The figure above is compiled entirely from `examples/moa-example.yaml`, with no 
 
 ## Status and limitations
 
-Version 0.4, after two production runs and an analysis of four published exemplars. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
+Version 0.5, after two production runs and an analysis of four published exemplars. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
 
 New in 0.2: pictogram resolution against Bioicons and Health Icons, with a vector gate alongside the licence gate; one text-metrics function for every glyph; arcs diverted into a clear lane by geometric intersection rather than by rank distance; desaturation of canonical pictograms applied to colour values; a refusal message that names the binding constraint.
+
+New in 0.5: a second layout engine. `anatomical` places an entity inside whatever contains it, so position carries location and the arcs carry causality; a container is just an entity with contents, so a macrophage holds a kinase and is still drawn as a macrophage. Anatomical identity comes from the open libraries as a faint anchor behind the contents, resolved by term, so the construct serves any field without a hand-drawn template. A local derivative store caches derived geometry and composed assets with the full licence chain. `flow` remains and is still right for algorithms.
 
 New in 0.4: `meta.purpose` assigns the colour budget, so an explanatory review figure spends colour on entity identity instead of on a narrative-role channel it does not use; `qualifier` typography; `prominence` as a weight channel; neutral fills and a compartment tint ramp; label wrapping; pictograms bounded with their labels in one container; rows that follow real node heights; lane routing that tests the whole route and takes the shorter detour; and catalogue categories that cannot depict a biological entity are excluded, after "B cell" resolved to a drawing of the letter B.
 
@@ -37,7 +39,7 @@ New in 0.3.1: specificity now outranks source cleanliness in the resolver, two e
 
 New in 0.3: a sixteen-class entity ontology organised by scale, separated from a depiction axis, so a clone is a `cell_population` and a resistance is a `measure` instead of both collapsing into `unspecified`; generic substitution governed by generalise-up-never-sideways with a curated per-class allow list; an adaptation ledger that records every derivative transformation and folds it into the credit line; built-in generic glyphs so no entity is drawn as an anonymous box; a vertical reading axis for decision procedures; and PPTX output with native shapes for the figures co-authors revise.
 
-Known limits: mechanism figures are still laid out by rank in columns rather than spatially, so a compartment is a tinted rectangle rather than an anatomical canvas, entities are boxed where a published figure would depict them, and a routed arc can leave the compartment it belongs to. There is no phase or context partition, which three of the four exemplars use. There are no insets, no anatomical anchors, and no panels, which makes "split the figure" advice the tool cannot execute; NIH BioArt, SciDraw, Open Science Art and PhyloPic have no machine index wired and are resolved by hand through `asset:`; relation labels are placed without collision avoidance except on lane-routed and vertical-flow arcs; the PPTX export is not yet a faithful copy of the figure: routed arcs are flattened to straight connectors and the legend is not reproduced. Each deck now carries a visible note listing what it omits, and the exporter prints the same list, so an editable artefact cannot be mistaken for the figure of record.
+Known limits: arcs are routed without regard to containment, so a relation between two entities in different containers can cross a third; the anatomical engine lays interior contents out in rows rather than by any finer spatial sense; there is no phase or context partition, which three of the four exemplars use; there are no insets and no panels, which makes "split the figure" advice the tool cannot execute; NIH BioArt, SciDraw, Open Science Art and PhyloPic have no machine index wired and are resolved by hand through `asset:`; relation labels are placed without collision avoidance except on lane-routed and vertical-flow arcs; the PPTX export is not yet a faithful copy of the figure: routed arcs are flattened to straight connectors and the legend is not reproduced. Each deck now carries a visible note listing what it omits, and the exporter prints the same list, so an editable artefact cannot be mistaken for the figure of record.
 
 ## Citing
 
@@ -57,6 +59,10 @@ assets/figure-lexicon-v0.1.svg        rendered reference plate
 render/asset_resolver.py              pictogram resolution, licence and vector gates
 examples/moa-example.yaml             worked specification
 render/ontology.py                    entity classes, depiction, generic glyphs
+render/layout_spatial.py              containment layout, slots, scale ladder
+render/derive.py                      derived geometry and the derivative store
+render/style.py                       the colour budget under each purpose
+examples/anatomical-example.yaml      containment, boundary slots, anchors
 render/figure_export.py               SVG, PNG and PPTX output
 examples/pictogram-example.yaml       resolved pictograms and generic substitution
 examples/algorithm-example.yaml       vertical clinical algorithm, PPTX output

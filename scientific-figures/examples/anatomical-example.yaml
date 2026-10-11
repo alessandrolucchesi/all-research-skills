@@ -1,0 +1,110 @@
+# Anatomical layout: position carries location, arcs carry causality.
+#
+# The macrophage is an entity that contains other entities, which is what lets
+# it be drawn as a macrophage while holding a kinase. The Fc receptor sits on
+# the boundary. The pulmonary bed carries a lung silhouette as a faint anchor,
+# resolved from the open libraries rather than drawn here, which is the same
+# construct a botanist would use for a leaf.
+#
+# python render/figure_export.py examples/anatomical-example.yaml --resolve-assets
+
+meta:
+  title: "Where opsonised platelets are cleared"
+  band: B
+  figure_class: mechanism_of_action
+  purpose: explanatory
+  layout: anatomical
+  target: oa_cc_by
+  claim: >
+    Opsonised platelets are engaged at the macrophage surface and cleared
+    through SyK; the same kinase carries B cell receptor signalling, so its
+    inhibition acts at two points within the same tissue.
+
+entities:
+  - id: spleen
+    label: "Splenic red pulp"
+    class: tissue
+    anchor:
+      term: "spleen"
+    contains: [macrophage, bcell, platelet, autoab]
+
+  - id: macrophage
+    label: "Macrophage"
+    class: cell
+    contains: [fcr, syk, phago]
+
+  - id: fcr
+    label: "Fc receptor"
+    class: macromolecule
+    slot: boundary
+
+  - id: syk
+    label: "SyK"
+    qualifier: "spleen tyrosine kinase"
+    class: macromolecule
+    identity: syk
+
+  - id: phago
+    label: "Phagocytosis"
+    class: process
+
+  - id: bcell
+    label: "B cell"
+    class: cell
+    contains: [bcr, syk2]
+
+  - id: bcr
+    label: "B cell receptor"
+    class: macromolecule
+    slot: boundary
+
+  - id: syk2
+    label: "SyK"
+    class: macromolecule
+    identity: syk
+
+  - id: platelet
+    label: "Platelet"
+    class: cell
+
+  - id: autoab
+    label: "Autoantibody"
+    qualifier: "anti-GP IIb/IIIa IgG"
+    class: macromolecule
+
+relations:
+  - from: autoab
+    to: platelet
+    type: binding
+    evidence: established
+    source: "10.0000/example.opsonisation"
+
+  - from: platelet
+    to: fcr
+    type: binding
+    evidence: established
+    source: "10.0000/example.fcr"
+
+  - from: fcr
+    to: syk
+    type: stimulation
+    evidence: established
+    source: "10.0000/example.syk"
+
+  - from: syk
+    to: phago
+    type: catalysis
+    evidence: established
+    source: "10.0000/example.phagocytosis"
+
+  - from: bcr
+    to: syk2
+    type: stimulation
+    evidence: established
+    source: "10.0000/example.bcr"
+
+  - from: syk2
+    to: autoab
+    type: production
+    evidence: hypothesized
+    source: "this work, proposed"

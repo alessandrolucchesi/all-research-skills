@@ -18,6 +18,30 @@ These are refusals, not preferences. Violating any of them produces a figure tha
 5. **No relation without an evidence level.** Every arc carries `evidence`. The compiler refuses to render otherwise. This is the discipline that keeps a hypothesis visually distinct from a demonstrated mechanism.
 6. **Band A figures must balance.** Participant flow diagrams fail compilation if the counts do not sum at every level.
 
+## Two layout engines
+
+`meta.layout` picks one, and the choice is not cosmetic.
+
+**flow** ranks entities topologically and puts rank N in column N. Right for algorithms, study designs and reporting diagrams, where the reader follows a procedure and there is no anatomy to show. The published exemplars confirm it: a clinical algorithm is boxes and arrows, monochrome, and should stay that way.
+
+**anatomical** places an entity inside whatever contains it. Position carries location, arcs carry causality, and rank only orders siblings within one region. This is the engine for mechanisms and pathways, and it exists because the flow engine makes position encode what the arrows already encode, which leaves nothing to say where the reader is: a glyph whose only reason to be in column three is that it is third in a chain has nothing to draw around it, so it gets a box.
+
+A container is simply an entity with contents (`contains`, or children declaring `inside`), so a macrophage can hold a kinase and still be drawn as a macrophage. Three slots, deliberately not named after any anatomy so the same construct serves a cell, a vessel, a reactor or a catchment: `interior` by default, `boundary` for anything straddling the edge, and nested containers for the rest. The ontology's scale ladder validates containment, a container must stand higher than its contents, and sets default sizes so an organ is not drawn at the size of a metabolite.
+
+## Where anatomy comes from
+
+Not from hand-drawn templates: that would tie the tool to whichever field drew them. Container geometry is ours and neutral, four shapes. Anatomical identity comes from the open libraries as an `anchor`, a silhouette drawn faint behind the contents, resolved by term through the same licence and vector gates as any other asset. A container with contents and no stated anchor asks for one under its own label. This is where the generality lives: a lung for a haematologist, a leaf for a botanist, a fermenter for a bioprocess engineer, with no code change.
+
+The first design had the silhouette *be* the container, contents inside its outline. Measured across seven shapes from three libraries, the largest rectangle fitting inside the inked area was 13 percent of the bounding box for a kidney, 19 for a liver, 23 for a stomach, 27 for a vessel, 38 for a macrophage, 41 for a lung and 50 for a megakaryocyte. Library shapes are lobed, thin or irregular, so that plan fails six times out of seven. Frame mode survives but is taken only when the measurement clears the threshold, per asset and automatically; otherwise the silhouette goes behind. The measurement is not wasted either way: its aspect and position tell the container what proportion to take and where inside the anchor the contents belong.
+
+An anchor is background. No relation may reach it, it carries no label of its own, and below a minimum rendered size it is dropped for a labelled geometric region, because a silhouette a few millimetres wide is mush.
+
+## The derivative store
+
+Geometry costs one rasterisation per asset and is then cached under `SCIFIG_HOME` (default `~/.scientific-figures`), never inside the repository. Composed and transformed assets live there too, so the library grows with use.
+
+Every entry carries the licence and provenance of every source that went into it. A derivative of a CC BY asset inherits the attribution obligation, and the chain has to survive composition: a cell composed from two Servier icons credits both, and a third figure reusing that cell credits them still. This is the part a human forgets and a store does not.
+
 ## Purpose decides what colour is for
 
 `meta.purpose` is the first thing to settle, because it assigns the colour budget.
@@ -122,8 +146,12 @@ Every glyph is sized from one text-metrics function. The `process` class is the 
 - `assets/sources.json` — open asset registry and licence gate
 - `assets/figure-lexicon-v0.1.svg` — rendered reference plate of the lexicon
 - `render/ontology.py` — entity classes, depiction, substitution rule, generic glyphs
+- `render/layout_spatial.py` — containment layout: slots, scale ladder, anatomical placement
+- `render/derive.py` — derived geometry, frame-or-anchor measurement, the derivative store
+- `render/style.py` — the colour budget under each purpose
 - `render/asset_resolver.py` — pictogram resolution, licence gate, vector gate
 - `render/figure_export.py` — SVG, PNG and PPTX output
 - `examples/moa-example.yaml` — worked specification
 - `examples/pictogram-example.yaml` — resolved pictograms, generic substitution, lane routing
 - `examples/algorithm-example.yaml` — vertical clinical algorithm, PPTX output
+- `examples/anatomical-example.yaml` — containment, boundary slots, resolved anchors

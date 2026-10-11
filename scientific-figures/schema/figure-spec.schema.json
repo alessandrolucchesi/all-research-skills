@@ -97,6 +97,15 @@
           ],
           "default": "primary_research",
           "description": "What the colour channel is spent on. primary_research: colour encodes narrative role, grey for cited background and one accent for the contribution. explanatory: the figure claims no novelty, so colour is freed for entity identity. Evidence keeps the stroke-pattern channel under both."
+        },
+        "layout": {
+          "enum": [
+            "auto",
+            "flow",
+            "anatomical"
+          ],
+          "default": "auto",
+          "description": "flow ranks entities topologically into columns, which is right for algorithms and study designs. anatomical places an entity inside what contains it, so position carries location and the arcs carry causality; right for mechanisms and pathways. auto picks anatomical for a mechanism or pathway whose entities declare containment."
         }
       }
     },
@@ -260,6 +269,40 @@
           "identity": {
             "type": "string",
             "description": "Entities sharing this key share an identity hue under purpose explanatory, which is how a figure says the same species appears in two places."
+          },
+          "contains": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Ids of entities inside this one. A container is just an entity with contents, so a macrophage can hold a kinase and still be drawn as a macrophage."
+          },
+          "inside": {
+            "type": "string",
+            "description": "The container this entity sits in; the other direction of `contains`."
+          },
+          "slot": {
+            "enum": [
+              "interior",
+              "boundary"
+            ],
+            "default": "interior",
+            "description": "Where inside the container. boundary straddles the edge, which is where a receptor, a channel or a port belongs. Deliberately not named after any anatomy."
+          },
+          "anchor": {
+            "type": "object",
+            "description": "An anatomical silhouette drawn faint behind this container's contents. Resolved from the open libraries by `term`, licence-gated like any asset. It is background: no relation may reach it.",
+            "properties": {
+              "term": {
+                "type": "string"
+              },
+              "source_id": {
+                "type": "string"
+              },
+              "asset_id": {
+                "type": "string"
+              }
+            }
           }
         }
       }

@@ -82,6 +82,8 @@ try:
     from .style import COMPARTMENT_TINT, PROMINENCE, Palette, prominence_of  # noqa
 except Exception:
     from style import COMPARTMENT_TINT, PROMINENCE, Palette, prominence_of  # noqa
+import derive as DERIVE  # noqa: E402
+import layout_spatial as SPATIAL  # noqa: E402
 
 BASE_FONT = 15.0
 ICON_H = 46.0           # vertical room a resolved pictogram adds to a node
@@ -223,6 +225,10 @@ def validate(spec, sources=None):
     for e in spec.get("entities", []):
         if e.get("compartment") and e["compartment"] not in comps:
             errors.append(f"entity {e['id']}: unknown compartment '{e['compartment']}'")
+        holds = bool(e.get("contains")) or any(
+            o.get("inside") == e["id"] for o in spec.get("entities", []))
+        if holds:
+            continue    # a container is drawn by its shape and its anchor
         if e["class"] in PICTOGRAM_CLASSES and not e.get("asset"):
             warnings.append(
                 f"entity {e['id']}: no pictogram resolved for class '{e['class']}'; drawn as a plain "
@@ -406,7 +412,76 @@ def layout_vertical(spec, gutter=GUTTER, font=BASE_FONT):
     return nodes, by_id, {}, w, h
 
 
+def layout_anatomical(spec, gutter=GUTTER, font=BASE_FONT):
+    """Containment layout. Returns the same tuple the flow engines return, so
+    the renderer does not care which engine produced it: leaf entities as
+    Nodes, containers as rects carrying their shape and anchor."""
+    ents, children, roots = SPATIAL.build_tree(spec)
+
+    def node_size(e):
+        n = Node(e, font)
+        return n.w, n.h
+
+    # Geometry before sizing: in frame mode the container has to be grown
+    # until the measured inscribed region can hold its contents, so the
+    # measurement cannot wait until after the box exists.
+    geoms = {}
+    for eid, e in ents.items():
+        a = e.get("anchor") or {}
+        if a.get("_svg"):
+            g = DERIVE.geometry_for(a, a["_svg"])
+            if g:
+                geoms[eid] = g
+    boxes = [SPATIAL.measure(r, ents, children, node_size, geoms) for r in roots]
+
+    x = MARGIN
+    top = MARGIN + 28.0
+    for b in boxes:
+        SPATIAL.place(b, x, top)
+        x += b.w + gutter
+
+    leaves, containers = [], []
+    for b in boxes:
+        SPATIAL.flatten(b, leaves, containers)
+
+    nodes, by_id = [], {}
+    for lb in leaves:
+        n = Node(lb.spec, font)
+        n.x, n.y, n.w, n.h = lb.x, lb.y, lb.w, lb.h
+        nodes.append(n)
+        by_id[n.id] = n
+
+    rank = topological_ranks(nodes, spec.get("relations", []))
+    for n in nodes:
+        n.rank = rank.get(n.id, 0)
+
+    rects = {}
+    for cb in containers:
+        cls = cb.spec.get("class", "tissue")
+        rects[cb.id] = dict(
+            x=cb.x, y=cb.y, w=cb.w, h=cb.h,
+            type=cb.spec.get("_ctype", "physical"),
+            label=cb.spec.get("label", cb.id),
+            depth=0 if cb.spec.get("_parent") is None else 1,
+            shape=container_shape_for(cls, cb.geometry),
+            has_boundary=any(c.slot == "boundary" for c in cb.children),
+            anchor=cb.spec.get("anchor"),
+            geometry=cb.geometry,
+            cls=cls,
+        )
+    width = max([n.x + n.w for n in nodes] + [r["x"] + r["w"] for r in rects.values()]) + MARGIN
+    height = max([n.y + n.h for n in nodes] + [r["y"] + r["h"] for r in rects.values()]) + MARGIN
+    return nodes, by_id, rects, width, height
+
+
 def layout(spec, gutter=GUTTER, font=BASE_FONT):
+    mode = spec["meta"].get("layout", "auto")
+    if mode == "anatomical" or (
+            mode == "auto" and spec["meta"].get("figure_class") in
+            ("mechanism_of_action", "pathway_curated", "pathway_data_derived",
+             "conceptual_model")
+            and any(e.get("contains") or e.get("inside") for e in spec.get("entities", []))):
+        return layout_anatomical(spec, gutter=gutter, font=font)
     if orientation_of(spec) == "vertical":
         return layout_vertical(spec, gutter=gutter, font=font)
     return layout_horizontal(spec, gutter=gutter, font=font)
@@ -634,12 +709,58 @@ def resolve_spec_assets(spec, strict=False):
         import asset_resolver as AR
     msgs = []
     target = spec["meta"]["target"]
+
+    # Anchors resolve like any other asset and through the same gates. An
+    # anchor named by term rather than by asset is looked up in the open
+    # libraries, which is where the tool's reach beyond one field comes from.
+    contains = set()
+    for e in spec["entities"]:
+        for c in e.get("contains", []) or []:
+            contains.add(e["id"])
+        if e.get("inside"):
+            contains.add(e["inside"])
+
+    # A container with contents and no stated anchor asks the libraries for
+    # one under its own label. This is what gives a macrophage the look of a
+    # macrophage without anybody drawing one, and it generalises: the same
+    # path fetches a leaf, a kidney or a fermenter.
+    for e in spec["entities"]:
+        if e["id"] in contains and e.get("anchor") is None:
+            e["anchor"] = {"term": e.get("label", e["id"]), "_auto": True}
+        if e.get("anchor") is False:
+            e.pop("anchor")
+
+    for e in spec["entities"]:
+        anc = e.get("anchor")
+        if not anc or anc.get("_svg"):
+            continue
+        term = anc.get("term") or anc.get("label") or e.get("label", e["id"])
+        try:
+            from . import asset_resolver as AR0  # noqa
+        except Exception:
+            sys.path.insert(0, HERE)
+            import asset_resolver as AR0
+        acc, cand, terms = AR0.resolve(term, target=target, cls=e.get("class"))
+        pick = acc[0] if acc else (cand[0] if cand else None)
+        if pick:
+            e["anchor"] = {k: v for k, v in pick.items() if k != "score"}
+            e["anchor"]["_svg"] = pick["svg"]
+            e["anchor"]["role"] = "anchor"
+            spec.setdefault("provenance", {}).setdefault("assets", []).append(
+                {k: v for k, v in pick.items() if k not in ("svg", "score")})
+            msgs.append(f"anchor {e['id']}: {pick['source_id']} {pick['asset_id']} ({pick['license']})")
+        elif not anc.get("_auto"):
+            msgs.append(f"warning: anchor {e['id']}: nothing resolved for [{', '.join(terms)}]")
+        else:
+            e.pop("anchor", None)
     prov = spec.setdefault("provenance", {}).setdefault("assets", [])
     used_assets = {}    # asset_id -> (entity id, score)
     prefer = None       # once one family is used, prefer it: mixing a flat
                         # pictogram set with a detailed illustration set reads
                         # as two figures spliced together
     for e in spec["entities"]:
+        if e["id"] in contains:
+            continue        # a container is drawn by its shape and its anchor
         if e.get("class") not in PICTOGRAM_CLASSES or e.get("asset", {}).get("_svg"):
             continue
         accepted, candidates, terms = AR.resolve(
@@ -754,6 +875,44 @@ def head(kind, x, y, angle, colour, sw, filled=True):
     return g
 
 
+# Container geometry is ours and domain-neutral. Anatomical identity never
+# comes from the geometry; it comes from the anchor behind it, which is what
+# lets the same four shapes serve a cell, a vessel, a reactor or a catchment.
+CONTAINER_SHAPES = ("blob", "rounded", "tube", "open")
+
+
+def container_shape_for(cls, geometry):
+    if cls in ("cell", "cell_population", "organelle"):
+        return "blob"
+    if geometry and geometry.get("aspect", 1.0) < 0.55:
+        return "tube"
+    if cls in ("organ", "tissue", "organism"):
+        return "rounded"
+    return "open"
+
+
+def container_path(shape, x, y, w, h, fill, stroke, sw, dashed=False):
+    d = ' stroke-dasharray="8 6"' if dashed else ""
+    if shape == "blob":
+        rx, ry = w / 2.0, h / 2.0
+        cx, cy = x + rx, y + ry
+        return (f'<path d="M{cx - rx:.1f},{cy:.1f} '
+                f'C{cx - rx:.1f},{cy - ry * 1.08:.1f} {cx - rx * 0.52:.1f},{cy - ry:.1f} {cx:.1f},{cy - ry:.1f} '
+                f'C{cx + rx * 0.56:.1f},{cy - ry:.1f} {cx + rx:.1f},{cy - ry * 0.96:.1f} {cx + rx:.1f},{cy - ry * 0.1:.1f} '
+                f'C{cx + rx:.1f},{cy + ry * 0.86:.1f} {cx + rx * 0.5:.1f},{cy + ry:.1f} {cx:.1f},{cy + ry:.1f} '
+                f'C{cx - rx * 0.58:.1f},{cy + ry:.1f} {cx - rx:.1f},{cy + ry * 0.9:.1f} {cx - rx:.1f},{cy:.1f} Z" '
+                f'fill="{fill}" stroke="{stroke}" stroke-width="{sw:.1f}"{d}/>')
+    if shape == "tube":
+        r = min(w, h) * 0.32
+        return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" '
+                f'rx="{r:.1f}" fill="{fill}" stroke="{stroke}" stroke-width="{sw:.1f}"{d}/>')
+    if shape == "rounded":
+        return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="18" '
+                f'fill="{fill}" stroke="{stroke}" stroke-width="{sw:.1f}"{d}/>')
+    return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="10" '
+            f'fill="{fill}" stroke="{stroke}" stroke-width="{sw:.1f}" stroke-dasharray="8 6"/>')
+
+
 def entity_shape(n, colour, sw, fill="#ffffff"):
     x, y, w, h = n.x, n.y, n.w, n.h
     dash = ""
@@ -854,6 +1013,37 @@ def render(spec, variant="journal"):
     # compartments, outermost first
     for cid, r in sorted(rects.items(), key=lambda kv: kv[1]["depth"]):
         used["comp_types"].add(r["type"])
+        if r.get("shape"):
+            tint = COMPARTMENT_TINT[min(r["depth"], len(COMPARTMENT_TINT) - 1)]
+            out.append(container_path(r["shape"], r["x"], r["y"], r["w"], r["h"],
+                                      tint if r["type"] == "physical" else "none",
+                                      INK, sw, dashed=r["type"] != "physical"))
+            anc = r.get("anchor") or {}
+            if anc.get("_svg"):
+                # Background, never a participant: faint, desaturated, and
+                # unreachable by any relation.
+                body, op = DERIVE.anchor_svg(desaturate_svg(anc["_svg"]))
+                out.append(f'<g opacity="{op}" color="#4a5a66">'
+                           + embed_svg(body, r["x"], r["y"] + 10, r["w"], r["h"] - 14,
+                                       "anc" + re.sub(r"[^A-Za-z0-9]", "", cid))
+                           + '</g>')
+            # A blob has no top-left corner to put a label in, so it is set
+            # centred above the curve; a rectangle keeps the corner.
+            if r["shape"] == "blob":
+                # Centred above is where a boundary child sits, so a container
+                # that has one moves its label aside rather than under it.
+                if r.get("has_boundary"):
+                    out.append(f'<text x="{r["x"] + r["w"]*0.14:.1f}" y="{r["y"] + 26:.1f}" '
+                               f'font-size="{font*0.78:.1f}" '
+                               f'fill="{LABEL_MUTED}" letter-spacing="0.6">{esc(r["label"].upper())}</text>')
+                else:
+                    out.append(f'<text x="{r["x"] + r["w"]/2:.1f}" y="{r["y"] - 6:.1f}" '
+                               f'font-size="{font*0.78:.1f}" text-anchor="middle" '
+                               f'fill="{LABEL_MUTED}" letter-spacing="0.6">{esc(r["label"].upper())}</text>')
+            else:
+                out.append(f'<text x="{r["x"]+16:.1f}" y="{r["y"]+20:.1f}" font-size="{font*0.78:.1f}" '
+                           f'fill="{LABEL_MUTED}" letter-spacing="0.6">{esc(r["label"].upper())}</text>')
+            continue
         if r["type"] == "physical":
             tint = COMPARTMENT_TINT[min(r["depth"], len(COMPARTMENT_TINT) - 1)]
             out.append(f'<rect x="{r["x"]:.1f}" y="{r["y"]:.1f}" width="{r["w"]:.1f}" height="{r["h"]:.1f}" '
