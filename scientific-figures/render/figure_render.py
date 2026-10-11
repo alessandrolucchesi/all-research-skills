@@ -268,7 +268,7 @@ def validate(spec, sources=None):
 class Node:
     __slots__ = ("id", "label", "cls", "comp", "role", "spec", "x", "y", "w", "h",
                  "rank", "row", "modifier", "has_icon", "pictorial",
-                 "qualifier", "lines", "qlines", "prom", "fsc")
+                 "qualifier", "lines", "qlines", "prom", "fsc", "depicted")
 
     def __init__(self, e, font=BASE_FONT, max_chars=30):
         self.modifier = False
@@ -284,6 +284,7 @@ class Node:
         self.spec = e
         self.qualifier = e.get("qualifier") or ""
         self.has_icon = bool(e.get("asset", {}).get("_svg"))
+        self.depicted = bool(e.get("_depicted")) and self.has_icon
         # A pictorial entity always gets icon room: with a resolved asset it
         # holds the icon, without one it holds this class's generic glyph.
         # Nothing is reduced to an anonymous box for want of an asset.
@@ -301,6 +302,11 @@ class Node:
         else:
             self.w = max(NODE_MIN_W, tw + 30.0 * ppad)
         body = max(NODE_H, ef * 1.5 * len(self.lines) + ef * 1.15 * len(self.qlines) + 16.0)
+        if self.depicted:
+            # A drawing with a label under it: no box, so no padding for one,
+            # and the glyph gets the room instead.
+            self.w = max(ICON_H * 1.15, tw + 8.0)
+            body = ef * 1.35 * len(self.lines) + ef * 1.05 * len(self.qlines) + 6.0
         self.h = body + (ICON_H if (self.has_icon or self.pictorial) else 0.0)
         self.x = self.y = 0.0
         self.rank = 0
@@ -740,7 +746,17 @@ def resolve_spec_assets(spec, strict=False):
         except Exception:
             sys.path.insert(0, HERE)
             import asset_resolver as AR0
-        acc, cand, terms = AR0.resolve(term, target=target, cls=e.get("class"))
+        # A container asks the frame categories first: those hold drawn empty
+        # cells whose middle can carry the contents, so the container becomes
+        # a real cell instead of a neutral blob with a ghost behind it.
+        prefer = ("Cell_membrane", "Tissues") if e["id"] in contains else ()
+        acc, cand, terms = AR0.resolve(term, target=target, cls=e.get("class"),
+                                       prefer_categories=prefer)
+        if e["id"] in contains and not acc:
+            acc, cand2, t2 = AR0.resolve("empty cell membrane", target=target,
+                                         cls=e.get("class"),
+                                         prefer_categories=("Cell_membrane",))
+            terms = terms + t2
         pick = acc[0] if acc else (cand[0] if cand else None)
         if pick:
             e["anchor"] = {k: v for k, v in pick.items() if k != "score"}
@@ -758,16 +774,31 @@ def resolve_spec_assets(spec, strict=False):
     prefer = None       # once one family is used, prefer it: mixing a flat
                         # pictogram set with a detailed illustration set reads
                         # as two figures spliced together
+    # In an anatomical figure a glyph is depicted unless there is nothing to
+    # depict it with. Counting the Frontiers inflammasome figure, five of
+    # about forty entities sit in a box; the rest are drawings with a label
+    # beside them, and that ratio is most of the distance between a diagram
+    # and a figure.
+    depict_all = (spec["meta"].get("layout") == "anatomical"
+                  or spec["meta"].get("figure_class") in
+                  ("mechanism_of_action", "pathway_curated", "pathway_data_derived"))
     for e in spec["entities"]:
         if e["id"] in contains:
-            continue        # a container is drawn by its shape and its anchor
-        if e.get("class") not in PICTOGRAM_CLASSES or e.get("asset", {}).get("_svg"):
+            continue        # a container is drawn by its frame and its body
+        if e.get("asset", {}).get("_svg"):
             continue
+        if e.get("depiction") == "geometric":
+            continue
+        if e.get("class") not in PICTOGRAM_CLASSES and not depict_all:
+            continue
+        if e.get("class") in ("process", "step", "measure", "state"):
+            continue    # these carry meaning in their glyph, not in a picture
         accepted, candidates, terms = AR.resolve(
             e.get("label", e["id"]), target=target,
             synonyms=e.get("synonyms"), cls=e.get("class"),
             prefer_source=prefer)
-        if accepted and accepted[0]["asset_id"] in used_assets:
+        if (accepted and accepted[0]["asset_id"] in used_assets
+                and not accepted[0].get("adaptations")):
             prev_id, prev_score = used_assets[accepted[0]["asset_id"]]
             if accepted[0]["score"] <= prev_score:
                 msgs.append(
@@ -787,6 +818,8 @@ def resolve_spec_assets(spec, strict=False):
         if accepted:
             a = accepted[0]
             used_assets[a["asset_id"]] = (e["id"], a["score"])
+            if depict_all:
+                e["_depicted"] = True
             e["asset"] = a
             prefer = prefer or a["source_id"]
             prov.append({k: v for k, v in a.items() if k not in ("svg", "score")})
@@ -916,6 +949,11 @@ def container_path(shape, x, y, w, h, fill, stroke, sw, dashed=False):
 def entity_shape(n, colour, sw, fill="#ffffff"):
     x, y, w, h = n.x, n.y, n.w, n.h
     dash = ""
+    if getattr(n, "depicted", False):
+        # The drawing is the glyph. A box around it is the thing that made
+        # every mechanism figure look like an organigram, and it has to be
+        # refused before any class branch gets to add one.
+        return ""
     if n.cls == "macromolecule":
         return f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="9" fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>'
     if n.cls == "nucleic_acid":
@@ -949,10 +987,6 @@ def entity_shape(n, colour, sw, fill="#ffffff"):
         return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="3" '
                 f'fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>' + t)
     if n.cls in PICTOGRAM_CLASSES:
-        # Always one bounded container, whether the art inside is a resolved
-        # pictogram or this class's generic glyph. Left loose above a bare
-        # caption the icon reads as decoration standing beside the diagram
-        # rather than as the entity itself.
         return (f'<rect x="{x:.1f}" y="{y:.1f}" width="{w:.1f}" height="{h:.1f}" rx="10" '
                 f'fill="{fill}" stroke="{colour}" stroke-width="{sw:.1f}"/>')
         # Nothing resolved: draw this class's generic glyph. Never a dashed
@@ -996,12 +1030,20 @@ def render(spec, variant="journal"):
                 fit_note = f"gutters tightened to {g:.0f} units to clear the type floor"
                 break
         else:
-            ncols = len({n.rank for n in nodes})
-            fit_note = (
-                f"CANNOT FIT: {ncols} rank columns leave body type below the floor at "
-                f"{cfg.get('out_width_mm', 0):.0f} mm. The binding constraint is the number of "
-                "columns, not the entity count: merging two adjacent ranks keeps all the "
-                "content, removing entities loses it. Try merging ranks first.")
+            if orientation_of(spec) == "horizontal" and spec["meta"].get("layout") == "anatomical":
+                tops = len([r for r in rects.values() if r.get("depth", 0) == 0])
+                fit_note = (
+                    f"CANNOT FIT: {tops} top-level container(s) laid side by side leave body "
+                    f"type below the floor at {cfg.get('out_width_mm', 0):.0f} mm. Nest a "
+                    "container inside another, or move entities into fewer containers: both "
+                    "keep the content, dropping entities loses it.")
+            else:
+                ncols = len({n.rank for n in nodes})
+                fit_note = (
+                    f"CANNOT FIT: {ncols} rank columns leave body type below the floor at "
+                    f"{cfg.get('out_width_mm', 0):.0f} mm. The binding constraint is the number of "
+                    "columns, not the entity count: merging two adjacent ranks keeps all the "
+                    "content, removing entities loses it. Try merging ranks first.")
 
     vertical = orientation_of(spec) == "vertical"
     used = {"relations": set(), "evidence": set(), "roles": set(), "comp_types": set()}
@@ -1015,11 +1057,32 @@ def render(spec, variant="journal"):
         used["comp_types"].add(r["type"])
         if r.get("shape"):
             tint = COMPARTMENT_TINT[min(r["depth"], len(COMPARTMENT_TINT) - 1)]
-            out.append(container_path(r["shape"], r["x"], r["y"], r["w"], r["h"],
-                                      tint if r["type"] == "physical" else "none",
-                                      INK, sw, dashed=r["type"] != "physical"))
+            geo0 = r.get("geometry") or {}
+            if not (DERIVE.is_frame(geo0) or geo0.get("inscribed_fraction", 0) >= 0.30):
+                out.append(container_path(r["shape"], r["x"], r["y"], r["w"], r["h"],
+                                          tint if r["type"] == "physical" else "none",
+                                          INK, sw, dashed=r["type"] != "physical"))
             anc = r.get("anchor") or {}
-            if anc.get("_svg"):
+            geo = r.get("geometry") or {}
+            if (anc.get("_svg") and not DERIVE.is_frame(geo)
+                    and geo.get("inscribed_fraction", 0) >= 0.30):
+                # A solid drawing used as the container body: pale enough for
+                # the contents to read on top, strong enough to be the cell
+                # rather than a ghost behind a neutral blob.
+                out.append(f'<g opacity="0.42" color="#5a6a76">'
+                           + embed_svg(desaturate_svg(anc["_svg"], keep=0.30),
+                                       r["x"], r["y"], r["w"], r["h"],
+                                       "bod" + re.sub(r"[^A-Za-z0-9]", "", cid))
+                           + '</g>')
+            elif DERIVE.is_frame(geo) and anc.get("_svg"):
+                # A frame asset is the container: drawn at full strength, with
+                # the contents in the empty middle the measurement found.
+                out.append(f'<g color="{INK}">'
+                           + embed_svg(desaturate_svg(anc["_svg"]), r["x"], r["y"],
+                                       r["w"], r["h"],
+                                       "frm" + re.sub(r"[^A-Za-z0-9]", "", cid))
+                           + '</g>')
+            elif anc.get("_svg"):
                 # Background, never a participant: faint, desaturated, and
                 # unreachable by any relation.
                 body, op = DERIVE.anchor_svg(desaturate_svg(anc["_svg"]))

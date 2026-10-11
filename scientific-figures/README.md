@@ -27,9 +27,11 @@ The figure above is compiled entirely from `examples/moa-example.yaml`, with no 
 
 ## Status and limitations
 
-Version 0.5, after two production runs and an analysis of four published exemplars. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
+Version 0.6, after two production runs and an analysis of four published exemplars. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
 
 New in 0.2: pictogram resolution against Bioicons and Health Icons, with a vector gate alongside the licence gate; one text-metrics function for every glyph; arcs diverted into a clear lane by geometric intersection rather than by rank distance; desaturation of canonical pictograms applied to colour values; a refusal message that names the binding constraint.
+
+New in 0.6: entities are depicted rather than boxed. In anatomical layout every class attempts resolution and a resolved entity loses its box, so a receptor is a drawn transmembrane receptor and an antibody is a drawn antibody. Containers are drawn too: a library frame asset, found by measuring whether its convex hull encloses an empty middle, is drawn at full strength with the contents inside, and a solid mark becomes a pale body. Resolution reaches compound terms through head-noun generalisation.
 
 New in 0.5: a second layout engine. `anatomical` places an entity inside whatever contains it, so position carries location and the arcs carry causality; a container is just an entity with contents, so a macrophage holds a kinase and is still drawn as a macrophage. Anatomical identity comes from the open libraries as a faint anchor behind the contents, resolved by term, so the construct serves any field without a hand-drawn template. A local derivative store caches derived geometry and composed assets with the full licence chain. `flow` remains and is still right for algorithms.
 

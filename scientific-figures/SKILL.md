@@ -28,9 +28,23 @@ These are refusals, not preferences. Violating any of them produces a figure tha
 
 A container is simply an entity with contents (`contains`, or children declaring `inside`), so a macrophage can hold a kinase and still be drawn as a macrophage. Three slots, deliberately not named after any anatomy so the same construct serves a cell, a vessel, a reactor or a catchment: `interior` by default, `boundary` for anything straddling the edge, and nested containers for the rest. The ontology's scale ladder validates containment, a container must stand higher than its contents, and sets default sizes so an organ is not drawn at the size of a metabolite.
 
+## Depict, do not box
+
+In an anatomical figure a glyph is a drawing unless there is nothing to draw it with. Counting the Frontiers inflammasome figure, five of about forty entities sit in a box and the rest are drawings with a label beside them, and that ratio is most of the distance between a diagram and a figure. So in `anatomical` layout every class attempts resolution, not only the pictogram classes, and a resolved entity loses its box: the drawing is the glyph, the label sits under it.
+
+`process`, `step`, `state` and `measure` keep their geometric glyphs, because for those the shape carries the meaning and a picture would not. An entity may also be forced back with `depiction: geometric`, and one that resolves nothing stays a labelled box, which is the right answer for something like a kinase that has no standard depiction.
+
+Resolution reaches these entities through head-noun generalisation: "Fc receptor" is a kind of receptor, so an asset whose name contains the query's head noun is a legitimate generalisation and the label specialises it. The same rule still refuses a basophil for a neutrophil, whose head noun is the whole word. String containment is weighted by coverage, after "autoantibody" once resolved to a drawing of a human body on the strength of the letters in "body".
+
+Two entities may share a drawing when both are generic substitutes, because a generic receptor on two different cells is how published figures draw it and the label and container carry the identity. An exact match stays exclusive: there the drawing itself makes the claim.
+
 ## Where anatomy comes from
 
 Not from hand-drawn templates: that would tie the tool to whichever field drew them. Container geometry is ours and neutral, four shapes. Anatomical identity comes from the open libraries as an `anchor`, a silhouette drawn faint behind the contents, resolved by term through the same licence and vector gates as any other asset. A container with contents and no stated anchor asks for one under its own label. This is where the generality lives: a lung for a haematologist, a leaf for a botanist, a fermenter for a bioprocess engineer, with no code change.
+
+A container is drawn, not outlined. When its asset is a frame, a library shape whose convex hull encloses an empty middle, it is drawn at full strength and the contents go in that middle: the libraries ship real empty cells, whose membrane is a ring of phospholipid dots, and the measurement finds them with no curated list. When the asset is a solid mark with a usable inscribed region, it is drawn as a pale body with the contents on top, which is the published convention for a cell. Otherwise the neutral geometry carries a faint anchor behind.
+
+Putting contents inside a drawing means growing it until its empty middle can hold them, at a cost of one over the measured fraction: a shape measuring thirty per cent costs more than three times in each direction, and nested containers multiply those factors. Past a cap of 1.7 the drawing goes behind instead, which costs nothing. Without that cap one figure grew until its type was unreadable.
 
 The first design had the silhouette *be* the container, contents inside its outline. Measured across seven shapes from three libraries, the largest rectangle fitting inside the inked area was 13 percent of the bounding box for a kidney, 19 for a liver, 23 for a stomach, 27 for a vessel, 38 for a macrophage, 41 for a lung and 50 for a megakaryocyte. Library shapes are lobed, thin or irregular, so that plan fails six times out of seven. Frame mode survives but is taken only when the measurement clears the threshold, per asset and automatically; otherwise the silhouette goes behind. The measurement is not wasted either way: its aspect and position tell the container what proportion to take and where inside the anchor the contents belong.
 

@@ -265,6 +265,15 @@ def score(hit, term):
             best = max(best, 82 + weight)
         elif len(term) >= 4 and term in cand:
             best = max(best, 58 + weight)
+        elif tw and cw and tw[-1] in cw and len(tw) > 1:
+            # Head-noun generalisation. "Fc receptor" IS a kind of receptor,
+            # so an asset whose name contains the query's head noun denotes
+            # something more general, which the label then specialises. This
+            # is the same generalise-up rule, extended to English compounds:
+            # it reaches "receptor-3helix-membrane" for "Fc receptor" and
+            # still refuses a basophil for a neutrophil, whose head noun is
+            # the whole word and appears nowhere in the basophil's name.
+            best = max(best, 86 + weight)
         elif cw and set(cw).issubset(set(tw)):
             # The candidate drops a qualifier from the query: "megakaryocyte"
             # against "clonal megakaryocyte". This is the most useful match
@@ -272,7 +281,13 @@ def score(hit, term):
             # what sent two different entities to one blood-cells glyph.
             best = max(best, 92 + weight)
         elif len(cand) >= 4 and cand in term:
-            best = max(best, 60 + weight)
+            # Containment scored by how much of the query the candidate
+            # covers. "antibody" covers two thirds of "autoantibody" and is
+            # a real generalisation; "body" covers a third and is an
+            # orthographic coincidence that once resolved an autoantibody to
+            # a drawing of a human body.
+            ratio = len(cand) / max(len(term), 1)
+            best = max(best, 38 + int(34 * ratio) + weight)
     for t in tags:
         if t == term:
             best = max(best, 76)
@@ -285,7 +300,7 @@ def score(hit, term):
 
 def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             limit=1, collect_rejected=False, auto_accept=AUTO_ACCEPT,
-            prefer_source=None):
+            prefer_source=None, prefer_categories=()):
     gate = load_gate(target)
     cats = catalogues if catalogues is not None else (healthicons_catalogue() + bioicons_catalogue())
     terms = search_terms(label, synonyms, cls)
@@ -313,6 +328,10 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             bonus = 2 if hit["source_id"] == "health-icons" else (2 if hit.get("author") == "Servier" else 0)
             if prefer_source and hit["source_id"] == prefer_source:
                 bonus += 1
+            if prefer_categories and hit.get("category") in prefer_categories:
+                # A container wants a drawn empty cell, not a solid one, and
+                # the library keeps those in their own category.
+                bonus += 14
             ranked.append((best + bonus, hit))
     ranked.sort(key=lambda r: -r[0])
 
@@ -337,7 +356,21 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
         # carrying the identity. A candidate that adds a word is more specific
         # or a sibling and is never taken automatically.
         cand_words = _norm(hit["name"]).split()
-        generalises = (any(is_generalisation(cand_words, t.split()) for t in terms)
+        cand_norm = _norm(hit["name"])
+
+        def _more_general(t):
+            tw = t.split()
+            if is_generalisation(cand_words, tw):
+                return True
+            # head noun: "Fc receptor" is a kind of receptor
+            if len(tw) > 1 and tw[-1] in cand_words:
+                return True
+            # contained word: "antibody" is more general than "autoantibody",
+            # but only when it covers enough of it to be the same noun.
+            return (len(cand_norm) >= 4 and cand_norm in t
+                    and len(cand_norm) / max(len(t), 1) >= 0.5)
+
+        generalises = (any(_more_general(t) for t in terms)
                        or hit["name"].lower() in generic_assets(cls or ""))
         adapt = []
         if sc < auto_accept and generalises:

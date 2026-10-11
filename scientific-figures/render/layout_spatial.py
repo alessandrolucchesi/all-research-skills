@@ -62,6 +62,13 @@ HEADER = 20.0       # room for the container's own label
 TOP_CLEAR = 22.0    # room above a container for a label set outside it
 BOUNDARY_INSET = 0.5   # fraction of a boundary glyph that sits outside the edge
 
+# Putting contents inside a drawing means growing the drawing until its empty
+# middle can hold them, and the factor is 1/fraction: a shape measuring 30 per
+# cent costs 3.3x in each direction. Nested containers multiply those factors,
+# which once blew a figure up until the type was unreadable. Past this cap the
+# drawing goes behind the contents instead, which costs nothing.
+MAX_FRAME_GROWTH = 1.7
+
 
 def level_of(cls):
     return SCALE_LEVEL.get(cls, 0)
@@ -205,13 +212,23 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0):
 
     bw = cw + 2 * PAD
     bh = chh + 2 * PAD + HEADER
-    if b.geometry and b.geometry.get("mode") == "frame":
-        # Contents go inside the silhouette, so the container must be grown
-        # until the measured inscribed region can hold them.
-        _, _, iw, ih = b.geometry["inscribed"]
+    region = None
+    if b.geometry and b.geometry.get("kind") == "frame":
+        region = b.geometry.get("frame_rect")
+    elif b.geometry and b.geometry.get("inscribed_fraction", 0) >= 0.30:
+        region = b.geometry.get("inscribed")
+    if region:
+        # Contents go inside the drawing, so the container is grown until the
+        # measured empty middle can hold them, unless that costs too much.
+        _, _, iw, ih = region
         if iw > 0.05 and ih > 0.05:
-            bw = max(bw, cw / iw)
-            bh = max(bh, chh / ih + HEADER)
+            gw, gh = (cw / iw) / max(bw, 1.0), (chh / ih) / max(bh, 1.0)
+            if max(gw, gh) <= MAX_FRAME_GROWTH:
+                bw = max(bw, cw / iw)
+                bh = max(bh, chh / ih)
+            else:
+                b.geometry = dict(b.geometry or {}, kind="mark",
+                                  inscribed_fraction=0.0, _demoted=True)
     if boundary:
         bw = max(bw, sum(c.w + GAP for c in boundary) - GAP + 2 * PAD)
     b.w, b.h = bw, bh
@@ -232,15 +249,22 @@ def place(b, x, y):
 
     avail_y = y + HEADER
     avail_h = b.h - HEADER
-    if b.geometry and b.geometry.get("mode") == "frame":
-        ix, iy, iw, ih = b.geometry["inscribed"]
+    region = None
+    if b.geometry and b.geometry.get("kind") == "frame":
+        region = b.geometry.get("frame_rect")
+        avail_y, avail_h = y, b.h      # a drawn frame carries its own label room
+    elif b.geometry and b.geometry.get("inscribed_fraction", 0) >= 0.30:
+        region = b.geometry.get("inscribed")
+        avail_y, avail_h = y, b.h
+    if region:
+        ix, iy, iw, ih = region
         cx0 = x + (ix + iw / 2.0) * b.w - cw / 2.0
         cy0 = avail_y + (iy + ih / 2.0) * avail_h - ch / 2.0
     else:
         cx0 = x + (b.w - cw) / 2.0
         cy0 = avail_y + (avail_h - ch) / 2.0
-    cx0 = min(max(cx0, x + PAD), x + b.w - PAD - cw)
-    cy0 = min(max(cy0, avail_y + PAD * 0.4), avail_y + avail_h - PAD * 0.4 - ch)
+    cx0 = min(max(cx0, x), max(x, x + b.w - cw))
+    cy0 = min(max(cy0, avail_y), max(avail_y, avail_y + avail_h - ch))
 
     ry = cy0
     for r in rows:
