@@ -135,6 +135,10 @@
         "phase_axis": {
           "type": "string",
           "description": "Name of the axis the phases run along, set beside the directional arrow: 'time', 'line of therapy', 'disease stage'. Omit for an unordered partition, such as side-by-side conditions, and no arrow is drawn."
+        },
+        "icon_style": {
+          "type": "string",
+          "description": "Name of the asset collection to draw the whole figure from, as the registry records its author, for example 'Servier' or 'Health Icons'. Libraries differ in style as well as in coverage, and a figure assembled from several reads as a patchwork. Left unset, the first asset the figure resolves sets it. A better match from another collection still wins: style never overrides sense."
         }
       }
     },

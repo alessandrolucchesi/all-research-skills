@@ -288,6 +288,21 @@ def scale_path_fit(d, x, y, w, h):
                             for px, py in pts) + " Z")
 
 
+def outline_bbox(outline):
+    """The normalised extent of the silhouette inside its box.
+
+    An arrowhead aimed at a drawn container was landing on the bounding box
+    and stopping in the white space beside the cell, because a silhouette
+    occupies only part of the box it is scaled into.
+    """
+    pts = outline_points(outline)
+    if len(pts) < 3:
+        return None
+    xs = [p[0] for p in pts]
+    ys = [p[1] for p in pts]
+    return min(xs), min(ys), max(xs), max(ys)
+
+
 def outline_edge(outline, u, window=0.08):
     """Normalised height of the silhouette's upper edge near normalised x=u.
 

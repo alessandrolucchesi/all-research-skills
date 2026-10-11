@@ -1,0 +1,207 @@
+# Tirzepatide: the glycaemic arm and the inflammatory arm, drawn so the
+# difference between them is visible. The incretin receptor effects are
+# established; the fall in adipose inflammation is downstream of the fall in
+# fat mass, and the direct action on the macrophage is associated rather than
+# demonstrated, which is the distinction the figure exists to make.
+meta:
+  title: Tirzepatide in obesity, glycaemic control and adipose inflammation
+  band: B
+  figure_class: mechanism_of_action
+  target: oa_cc_by
+  purpose: explanatory
+  layout: anatomical
+  icon_style: Servier
+  claim: >-
+    Dual GIP and GLP-1 receptor agonism improves glycaemia through the islet
+    and through adipose lipid handling, while the fall in adipose
+    inflammation follows the loss of fat mass rather than a demonstrated
+    direct action on the macrophage.
+
+entities:
+  - id: tzp
+    label: Tirzepatide
+    class: small_molecule
+    qualifier: dual GIP and GLP-1 receptor agonist
+    identity: drug
+    prominence: high
+
+  - id: hypo
+    label: Hypothalamus
+    class: organ
+    qualifier: arcuate nucleus
+    identity: brain
+    synonyms: [brain]
+
+  # the islet: glucose-dependent secretion
+  - id: islet
+    label: Pancreatic islet
+    class: tissue
+    contains: [beta, alpha]
+  - id: beta
+    inside: islet
+    label: Beta cell
+    class: cell
+    identity: betacell
+    anchor:
+      term: emptycell
+    contains: [glp1r, insulin]
+  - id: glp1r
+    label: GLP-1 receptor
+    class: macromolecule
+    slot: boundary
+    synonyms: [receptor membrane]
+  - id: insulin
+    label: Insulin secretion
+    class: process
+    qualifier: glucose-dependent
+
+  - id: alpha
+    inside: islet
+    label: Alpha cell
+    class: cell
+    identity: alphacell
+    anchor:
+      term: emptycell-3
+    contains: [glucagon]
+  - id: glucagon
+    label: Glucagon release
+    class: process
+
+  # fat mass is the hinge: the inflammatory arm hangs off it
+  - id: weight
+    label: Fat mass
+    class: measure
+    qualifier: reduced
+
+  # adipose tissue: lipid handling and the inflammatory infiltrate
+  - id: adipose
+    label: Adipose tissue
+    class: tissue
+    contains: [adipocyte, atm]
+  - id: adipocyte
+    inside: adipose
+    label: Adipocyte
+    class: cell
+    identity: adipocyte
+    synonyms: [adipocyte]
+    contains: [gipr, buffering, adipokine]
+  - id: gipr
+    label: GIP receptor
+    class: macromolecule
+    slot: boundary
+    synonyms: [receptor membrane]
+  - id: buffering
+    label: Lipid buffering
+    class: process
+    qualifier: postprandial
+  - id: adipokine
+    label: Adiponectin
+    class: macromolecule
+    qualifier: rises
+
+  - id: atm
+    inside: adipose
+    label: Macrophage
+    class: cell
+    qualifier: adipose tissue macrophage
+    identity: macrophage
+    contains: [cytokines]
+  - id: cytokines
+    label: TNF and IL-6
+    class: macromolecule
+    qualifier: crown-like structures
+
+  # outcomes
+  - id: hba1c
+    label: HbA1c
+    class: measure
+    qualifier: reduced
+    prominence: high
+  - id: crp
+    label: hs-CRP
+    class: measure
+    qualifier: reduced
+    prominence: high
+
+relations:
+  # engagement
+  - from: tzp
+    to: glp1r
+    type: binding
+    evidence: established
+    source: "Coskun 2018"
+  - from: tzp
+    to: gipr
+    type: binding
+    evidence: established
+    source: "Coskun 2018"
+  - from: tzp
+    to: hypo
+    type: stimulation
+    evidence: established
+    source: "Samms 2021"
+    label: appetite suppression
+
+  # the glycaemic arm
+  - from: glp1r
+    to: insulin
+    type: stimulation
+    evidence: established
+    source: "Frias 2021"
+  - from: glp1r
+    to: glucagon
+    type: inhibition
+    evidence: established
+    source: "Frias 2021"
+  - from: gipr
+    to: buffering
+    type: stimulation
+    evidence: established
+    source: "Samms 2020"
+  - from: insulin
+    to: hba1c
+    type: inhibition
+    evidence: established
+    source: "Frias 2021"
+  - from: buffering
+    to: hba1c
+    type: inhibition
+    evidence: established
+    source: "Samms 2020"
+
+  # the mass arm, which is where the inflammatory effect comes from
+  - from: hypo
+    to: weight
+    type: inhibition
+    evidence: established
+    source: "Jastreboff 2022"
+  - from: weight
+    to: atm
+    type: inhibition
+    evidence: established
+    source: "Weisberg 2003"
+    label: infiltration falls
+  - from: cytokines
+    to: crp
+    type: production
+    evidence: established
+    source: "Ridker 2003"
+  - from: gipr
+    to: adipokine
+    type: production
+    evidence: established
+    source: "Samms 2020"
+  - from: adipokine
+    to: cytokines
+    type: inhibition
+    evidence: established
+    source: "Ouchi 2011"
+
+  # the contested arm: a direct anti-inflammatory action is reported but not
+  # separated from the weight effect in any trial to date
+  - from: tzp
+    to: cytokines
+    type: inhibition
+    evidence: associated
+    source: "Wilson 2022"
+    label: direct action, not separated from weight loss

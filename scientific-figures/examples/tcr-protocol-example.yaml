@@ -1,0 +1,190 @@
+# A protocol figure, which is a different animal from a mechanism: two
+# parallel tracks that converge on one readout, and a contribution to mark.
+# purpose is primary_research here, so the colour budget goes to the delta
+# rather than to entity identity: everything the protocol inherits is grey
+# and what this work shows is in the accent.
+meta:
+  title: TCR stimulation assays in the mouse, ex vivo and in vivo
+  band: B
+  figure_class: study_design
+  target: oa_cc_by
+  purpose: primary_research
+  layout: flow
+  orientation: vertical
+  icon_style: Servier
+  accent_colour: "#1f6feb"
+  claim: >-
+    Two routes to antigen-receptor stimulation of mouse T cells, plate-bound
+    anti-CD3 and anti-CD28 ex vivo and ovalbumin in the OT-II transgenic in
+    vivo, converge on the same readouts, and MYC is required for both the
+    proliferative and the differentiative response.
+
+compartments:
+  - id: exvivo
+    label: Ex vivo, anti-CD3 and anti-CD28
+    type: conceptual
+  - id: invivo
+    label: In vivo, ovalbumin in OT-II
+    type: conceptual
+
+entities:
+  # ex vivo track
+  - id: mouse
+    compartment: exvivo
+    label: Mouse
+    class: organism
+    qualifier: C57BL/6
+    identity: mouse
+    synonyms: [rodent, laboratory mouse]
+  - id: spleen
+    compartment: exvivo
+    label: Spleen
+    class: organ
+    identity: spleen
+  - id: enrich
+    compartment: exvivo
+    label: Negative selection
+    class: step
+    qualifier: magnetic bead enrichment
+  - id: tcell
+    compartment: exvivo
+    label: Splenic T cell
+    class: cell
+    identity: tcell
+    synonyms: [t cell]
+  - id: ab
+    compartment: exvivo
+    label: anti-CD3 and anti-CD28
+    class: macromolecule
+    qualifier: plate-bound
+    identity: antibody
+    synonyms: [antibody]
+
+  # in vivo track
+  - id: ot2
+    compartment: invivo
+    label: OT-II mouse
+    class: organism
+    qualifier: transgenic TCR, I-Ab restricted
+    identity: mouse
+    synonyms: [mouse, rodent]
+  - id: ova
+    compartment: invivo
+    label: Ovalbumin
+    class: macromolecule
+    qualifier: OVA 323-339
+    identity: antigen
+    synonyms: [protein]
+  - id: ln
+    compartment: invivo
+    label: Draining lymph node
+    class: organ
+    identity: lymphnode
+    synonyms: [lymph node]
+  - id: ot2cell
+    compartment: invivo
+    label: OT-II T cell
+    class: cell
+    identity: tcell
+    synonyms: [t cell]
+
+  # shared readout
+  - id: signalling
+    label: TCR signalling
+    class: process
+  - id: myc
+    label: MYC
+    class: macromolecule
+    qualifier: required
+    role: contribution
+    prominence: high
+  - id: prolif
+    label: Proliferation
+    class: measure
+    qualifier: dye dilution
+  - id: diff
+    label: Effector and memory differentiation
+    class: measure
+
+relations:
+  # ex vivo procedure
+  - from: mouse
+    to: spleen
+    type: flow
+    evidence: established
+    source: "protocol step 1"
+    label: harvest
+  - from: spleen
+    to: enrich
+    type: flow
+    evidence: established
+    source: "protocol step 2"
+  - from: enrich
+    to: tcell
+    type: flow
+    evidence: established
+    source: "protocol step 3"
+  - from: ab
+    to: tcell
+    type: stimulation
+    evidence: established
+    source: "protocol step 4"
+    label: 48 h
+
+  # in vivo procedure
+  - from: ova
+    to: ot2
+    type: transport
+    evidence: established
+    source: "protocol step 5"
+    label: immunisation
+  - from: ot2
+    to: ln
+    type: flow
+    evidence: established
+    source: "protocol step 6"
+  - from: ln
+    to: ot2cell
+    type: flow
+    evidence: established
+    source: "protocol step 7"
+
+  # convergence
+  - from: tcell
+    to: signalling
+    type: stimulation
+    evidence: established
+    source: "Smith-Garvin 2009"
+  - from: ot2cell
+    to: signalling
+    type: stimulation
+    evidence: established
+    source: "Barnden 1998"
+  - from: signalling
+    to: prolif
+    type: production
+    evidence: established
+    source: "Smith-Garvin 2009"
+  - from: signalling
+    to: diff
+    type: production
+    evidence: established
+    source: "Smith-Garvin 2009"
+
+  # what this work shows
+  - from: signalling
+    to: myc
+    type: production
+    evidence: established
+    source: "Wang 2011"
+  - from: myc
+    to: prolif
+    type: stimulation
+    evidence: demonstrated_here
+    role: contribution
+    label: required
+  - from: myc
+    to: diff
+    type: stimulation
+    evidence: demonstrated_here
+    role: contribution

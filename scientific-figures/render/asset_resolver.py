@@ -101,6 +101,9 @@ NEUTRAL_QUALIFIERS = {
     "simple", "generic", "basic", "plain", "standard", "general",
     "membrane", "transmembrane", "surface", "bound",
     "schematic", "outline", "empty", "filled", "icon", "symbol", "shape",
+    # A library's colour variants of one drawing are the same drawing.
+    "blue", "green", "orange", "pink", "red", "yellow", "purple", "violet",
+    "grey", "gray", "black", "white", "brown", "teal",
 }
 
 # Catalogue categories that can never depict a biological or clinical entity.
@@ -254,6 +257,45 @@ def _neutral_extras(cand_words, term_words):
     return all(w in NEUTRAL_QUALIFIERS for w in extras)
 
 
+def shared_denotation(asset_name, label_a, label_b):
+    """True when the asset's name is the noun the two labels have in common.
+
+    A glyph says two entities are the same thing only when it names one of
+    them. `Mouse` against "Mouse" and "OT-II mouse" names the word both
+    already carry, and drawing both strains as mice is what a protocol
+    figure does; `macrophage` against "Macrophage" and "Dendritic cell"
+    names the first and would be a false statement about the second.
+    """
+    aw = _stem(_norm(asset_name)).split()
+    if not aw:
+        return False
+    la = set(_stem(_norm(label_a)).split())
+    lb = set(_stem(_norm(label_b)).split())
+    if not la or not lb:
+        return False
+    return all((w in la and w in lb) or w in NEUTRAL_QUALIFIERS for w in aw)
+
+
+def is_generic_name_for(asset_name, label):
+    """True when the asset's name says nothing about this entity that the
+    entity's own label does not already say.
+
+    `receptor-membrane-2` against "GLP-1 receptor" is a plain receptor: the
+    head noun is the entity's own, and what is added is a neutral word. Two
+    such entities may share it, because the glyph names neither of them.
+    `macrophage` against "Macrophage" is the entity itself and may not be
+    shared, because a second entity drawn with it would be claimed to be a
+    macrophage too.
+    """
+    lw = set(_stem(_norm(label)).split())
+    aw = _stem(_norm(asset_name)).split()
+    if not aw or not lw:
+        return False
+    if set(aw) <= lw:
+        return False      # the asset IS the entity, under its own name
+    return all(w in lw or w in NEUTRAL_QUALIFIERS for w in aw)
+
+
 def _stem(n):
     """Fold the two differences that are spelling, not meaning.
 
@@ -355,7 +397,7 @@ def score(hit, term):
 
 def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             limit=1, collect_rejected=False, auto_accept=AUTO_ACCEPT,
-            prefer_source=None, prefer_categories=()):
+            prefer_source=None, prefer_categories=(), prefer_author=None):
     gate = load_gate(target)
     cats = catalogues if catalogues is not None else (healthicons_catalogue() + bioicons_catalogue())
     own = search_terms(label, synonyms, None)
@@ -394,6 +436,38 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             bonus = 2 if hit["source_id"] == "health-icons" else (2 if hit.get("author") == "Servier" else 0)
             if prefer_source and hit["source_id"] == prefer_source:
                 bonus += 1
+            # One collection per figure wherever the collection has the
+            # subject. Libraries differ in style, not only in coverage, and
+            # a figure assembled from four of them reads as a patchwork
+            # whatever the drawing quality of each piece. Style never
+            # overrides sense: this is worth two points and a tiebreak, so
+            # a better match from another collection still wins.
+            # prefer_author may carry style hints after the collection name,
+            # "Servier 3d" against "Servier": a library often ships the same
+            # subject in two finishes, and a figure should pick one.
+            same_author = False
+            if prefer_author:
+                want = _norm(prefer_author).split()
+                au = _norm(hit.get("author", "")).split()
+                same_author = bool(au) and all(w in want for w in au)
+                if same_author:
+                    bonus += 2
+                    hints = [w for w in want if w not in au]
+                    if hints:
+                        nm = _stem(_norm(hit["name"])).split()
+                        bonus += 4 * sum(1 for w in hints if w in nm)
+                        # A variant of the same subject is the same subject:
+                        # `nucleus-full-3d` denotes what `nucleus` denotes,
+                        # so it scores as an exact match and the hint
+                        # decides between them. Without this the plain name
+                        # always won and the variant could never be chosen.
+                        for t in own:
+                            tw = _stem(t).split()
+                            if (tw and all(w in nm for w in tw)
+                                    and all(w in tw or w in hints
+                                            or w in NEUTRAL_QUALIFIERS for w in nm)):
+                                best = max(best, 100)
+                                break
             # A container wants a drawn empty cell rather than a solid one,
             # and the library keeps those in their own category. It breaks a
             # tie and nothing more: as a score it was outweighing an exact
@@ -401,7 +475,8 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             # preference should be able to do.
             pref = 1 if (prefer_categories
                          and hit.get("category") in prefer_categories) else 0
-            ranked.append((best + bonus, pref, own_best, hit))
+            ranked.append((best + bonus, pref + (1 if same_author else 0),
+                           own_best, hit))
     ranked.sort(key=lambda r: (-r[0], -r[1]))
 
 
@@ -455,10 +530,12 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             adapt.append("generic substitute for the labelled entity")
         record = {
             "source_id": hit["source_id"], "asset_id": hit["path"],
+            "name": hit["name"],
             "author": hit["author"], "license": hit["license"],
             "url": raw_url(hit), "adaptations": adapt,
             "attribution": attribution(hit, adapt),
             "vector": True, "score": sc, "own_score": own_sc, "svg": svg,
+            "generic_name": is_generic_name_for(hit["name"], label),
         }
         # A class generic must not be taken while something that matched the
         # entity's own name is on the table. Ranking puts the better match

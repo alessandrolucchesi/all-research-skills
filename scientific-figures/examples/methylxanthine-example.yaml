@@ -9,6 +9,7 @@ meta:
   target: oa_cc_by
   purpose: explanatory
   layout: anatomical
+  icon_style: Servier
   claim: >-
     Methylxanthine exposure lowers bone mineral density through three
     converging routes, adenosine receptor antagonism, a cAMP-driven shift of

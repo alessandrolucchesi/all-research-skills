@@ -274,6 +274,36 @@ def validate(spec, sources=None):
         elif ev not in ("demonstrated_here", "hypothesized") and not r.get("source"):
             errors.append(f"{tag}: evidence '{ev}' requires a source")
 
+    # A relation between a container and something it holds restates the
+    # containment, and it cannot be drawn without artefacts: the arc runs
+    # from the container's edge to a target inside it, so the shaft hides
+    # under the target and only an orphan arrowhead is left on the page.
+    holder = {}
+    for e in spec.get("entities", []):
+        for ch in e.get("contains", []) or []:
+            holder[ch] = e["id"]
+        if e.get("inside"):
+            holder[e["id"]] = e["inside"]
+
+    def _chain(eid, guard=0):
+        out, p = [], holder.get(eid)
+        while p and guard < 12:
+            out.append(p)
+            p, guard = holder.get(p), guard + 1
+        return out
+
+    for i, r in enumerate(spec.get("relations", [])):
+        f, t = r.get("from"), r.get("to")
+        if not f or not t:
+            continue
+        if f in _chain(t) or t in _chain(f):
+            errors.append(
+                f"relation {i} ({f} -> {t}): one of these contains the other, and "
+                f"the containment already says so. Drawing it as an arc as well "
+                f"leaves an arrowhead with no shaft. Remove the relation, or take "
+                f"the entity out of the container if the claim is causal and not "
+                f"locational.")
+
     phases = meta.get("phases") or []
     if phases:
         pids = {p["id"] for p in phases}
@@ -454,30 +484,90 @@ def orientation_of(spec):
 
 
 def layout_vertical(spec, gutter=GUTTER, font=BASE_FONT):
-    """Rank runs down the page; nodes sharing a rank spread across it."""
+    """Rank runs down the page; nodes sharing a rank spread across it.
+
+    Compartments become lanes. A two-arm protocol is the commonest vertical
+    figure there is, and laid out without lanes its arms interleave: the
+    OT-II mouse came to sit beside the spleen it has nothing to do with,
+    and the compartments were not drawn at all. Entities in no compartment
+    are shared and centre across the full width, which is what a pair of
+    arms converging on one readout needs.
+    """
     nodes = [Node(e, font) for e in spec["entities"]]
     by_id = {n.id: n for n in nodes}
     rank = topological_ranks(nodes, spec.get("relations", []))
     for n in nodes:
         n.rank = rank[n.id]
-    lanes = {}
+
+    comps = spec.get("compartments", []) or []
+    comp_by_id = {c["id"]: c for c in comps}
+
+    def lane_of(n):
+        cid, guard = n.comp, 0
+        while cid in comp_by_id and comp_by_id[cid].get("parent") and guard < 8:
+            cid, guard = comp_by_id[cid]["parent"], guard + 1
+        return cid if cid in comp_by_id else None
+
+    rows = {}
     for n in sorted(nodes, key=lambda m: (m.rank, m.id)):
-        lanes.setdefault(n.rank, []).append(n)
+        rows.setdefault(n.rank, []).append(n)
+
+    def span(group):
+        return sum(n.w for n in group) + gutter * (len(group) - 1) if group else 0.0
+
+    lane_ids = [c["id"] for c in comps if any(lane_of(n) == c["id"] for n in nodes)]
+    lane_w = {lid: max([span([n for n in g if lane_of(n) == lid])
+                        for g in rows.values()] + [0.0]) for lid in lane_ids}
+    shared_w = max([span([n for n in g if lane_of(n) is None])
+                    for g in rows.values()] + [0.0])
+
+    LANE_PAD, LANE_HEAD = 20.0, 26.0
+    lane_x, x = {}, MARGIN
+    for lid in lane_ids:
+        lane_x[lid] = x
+        x += lane_w[lid] + 2 * LANE_PAD + gutter
+    width = max(x - gutter - MARGIN, shared_w)
+
     row_gap = 54.0
-    y = MARGIN + 10.0
-    width = max(sum(n.w for n in g) + gutter * (len(g) - 1) for g in lanes.values())
-    for rk in sorted(lanes):
-        group = lanes[rk]
-        total = sum(n.w for n in group) + gutter * (len(group) - 1)
-        x = MARGIN + (width - total) / 2.0
-        tallest = max(n.h for n in group)
-        for n in group:
-            n.x, n.y = x, y
-            x += n.w + gutter
+    y = MARGIN + 10.0 + (LANE_HEAD if lane_ids else 0.0)
+    for rk in sorted(rows):
+        g = rows[rk]
+        tallest = max(n.h for n in g)
+        for lid in lane_ids:
+            gg = [n for n in g if lane_of(n) == lid]
+            if not gg:
+                continue
+            cx = lane_x[lid] + LANE_PAD + (lane_w[lid] - span(gg)) / 2.0
+            for n in gg:
+                n.x, n.y = cx, y
+                cx += n.w + gutter
+        gg = [n for n in g if lane_of(n) is None]
+        if gg:
+            cx = MARGIN + (width - span(gg)) / 2.0
+            for n in gg:
+                n.x, n.y = cx, y
+                cx += n.w + gutter
         y += tallest + row_gap
+
+    rects = {}
+    for lid in lane_ids:
+        mine = [n for n in nodes if lane_of(n) == lid]
+        if not mine:
+            continue
+        x0 = min(n.x for n in mine) - LANE_PAD
+        x1 = max(n.x + n.w for n in mine) + LANE_PAD
+        y0 = min(n.y for n in mine) - LANE_HEAD
+        y1 = max(n.y + n.h for n in mine) + LANE_PAD * 0.7
+        rects[lid] = dict(x=x0, y=y0, w=x1 - x0, h=y1 - y0,
+                          type=comp_by_id[lid].get("type", "physical"),
+                          label=comp_by_id[lid].get("label", lid), depth=0,
+                          parent=comp_by_id[lid].get("parent"))
+
     w = width + 2 * MARGIN
     h = y - row_gap + MARGIN
-    return nodes, by_id, {}, w, h
+    for r in rects.values():
+        h = max(h, r["y"] + r["h"] + MARGIN)
+    return nodes, by_id, rects, w, h
 
 
 def layout_anatomical(spec, gutter=GUTTER, font=BASE_FONT):
@@ -516,11 +606,14 @@ def layout_anatomical(spec, gutter=GUTTER, font=BASE_FONT):
     boxes = [SPATIAL.measure(r, ents, children, node_size, geoms, 0, label_w)
              for r in roots]
 
-    x = MARGIN
     top = MARGIN + 28.0
-    for b in boxes:
-        SPATIAL.place(b, x, top)
-        x += b.w + gutter
+    y = top
+    for row in SPATIAL.pack_roots(boxes, gutter):
+        x = MARGIN
+        for b in row:
+            SPATIAL.place(b, x, y)
+            x += b.w + gutter
+        y += max(b.h for b in row) + gutter * 0.9
 
     leaves, containers = [], []
     for b in boxes:
@@ -855,6 +948,16 @@ def embed_svg(svg_text, x, y, w, h, uid):
         return ""
     inner = re.sub(r"(?s)^.*?<svg[^>]*>", "", svg_text)
     inner = re.sub(r"(?s)</svg>\s*$", "", inner)
+    # Editor leftovers. Inkscape files carry sodipodi and inkscape elements
+    # and attributes whose namespaces were declared on the <svg> tag that
+    # inlining just discarded, so the figure came out as XML that will not
+    # parse: "unbound prefix". They are metadata and nothing is lost with
+    # them. xlink is kept, since hrefs inside the drawing use it.
+    inner = re.sub(r"(?is)<(sodipodi|inkscape|rdf|cc|dc)\b[^>]*?/>", "", inner)
+    inner = re.sub(r"(?is)<(sodipodi|inkscape|rdf|cc|dc):([\w.-]+)\b.*?</\1:\2>",
+                   "", inner)
+    inner = re.sub(r"(?is)<metadata\b.*?</metadata>", "", inner)
+    inner = re.sub(r'(?i)\s(?!xlink:)[\w.-]+:[\w.-]+="[^"]*"', "", inner)
     for ident in set(re.findall(r'id="([^"]+)"', inner)):
         new = f"{uid}_{ident}"
         inner = (inner.replace(f'id="{ident}"', f'id="{new}"')
@@ -901,6 +1004,11 @@ def resolve_spec_assets(spec, strict=False):
         if e.get("anchor") is False:
             e.pop("anchor")
 
+    # One collection for the whole figure wherever it has the subject. The
+    # author may pin it with meta.icon_style; otherwise the first asset the
+    # figure accepts sets it, and everything after prefers the same hand.
+    style = {"author": spec["meta"].get("icon_style"), "source": None}
+
     for e in spec["entities"]:
         anc = e.get("anchor")
         if not anc or anc.get("_svg"):
@@ -916,7 +1024,9 @@ def resolve_spec_assets(spec, strict=False):
         # a real cell instead of a neutral blob with a ghost behind it.
         prefer = ("Cell_membrane", "Tissues") if e["id"] in contains else ()
         acc, cand, terms = AR0.resolve(term, target=target, cls=e.get("class"),
-                                       prefer_categories=prefer)
+                                       prefer_categories=prefer,
+                                       prefer_author=style["author"],
+                                       prefer_source=style["source"])
         # The empty-cell fallback is for things that are cells. Applied to an
         # organ it drew a kidney as a cell membrane, which is not a
         # simplification of a kidney but a different claim about what the
@@ -925,7 +1035,8 @@ def resolve_spec_assets(spec, strict=False):
                 and e.get("class") in ("cell", "cell_population", "organelle", "complex")):
             acc, cand2, t2 = AR0.resolve("empty cell membrane", target=target,
                                          cls=e.get("class"),
-                                         prefer_categories=("Cell_membrane",))
+                                         prefer_categories=("Cell_membrane",),
+                                         prefer_author=style["author"])
             terms = terms + t2
         pick = acc[0] if acc else (cand[0] if cand else None)
         if pick:
@@ -934,6 +1045,8 @@ def resolve_spec_assets(spec, strict=False):
             e["anchor"]["role"] = "anchor"
             spec.setdefault("provenance", {}).setdefault("assets", []).append(
                 {k: v for k, v in pick.items() if k not in ("svg", "score")})
+            style["author"] = style["author"] or pick.get("author")
+            style["source"] = style["source"] or pick["source_id"]
             msgs.append(f"anchor {e['id']}: {pick['source_id']} {pick['asset_id']} ({pick['license']})")
         elif not anc.get("_auto"):
             msgs.append(f"warning: anchor {e['id']}: nothing resolved for [{', '.join(terms)}]")
@@ -967,7 +1080,8 @@ def resolve_spec_assets(spec, strict=False):
         accepted, candidates, terms = AR.resolve(
             e.get("label", e["id"]), target=target,
             synonyms=e.get("synonyms"), cls=e.get("class"),
-            prefer_source=prefer)
+            prefer_source=prefer or style["source"],
+            prefer_author=style["author"])
         # Two entities may share a glyph when it is a generic standing in for
         # both: an adenosine receptor and RANK are both receptors, and the
         # library's plain membrane receptor says nothing false about either,
@@ -979,8 +1093,15 @@ def resolve_spec_assets(spec, strict=False):
         # second one a different glyph would say they are not.
         if prev and phase_of.get(e["id"]) != phase_of.get(prev[0]):
             prev = None
-        if (prev and not accepted[0].get("adaptations") and not prev[2]):
-            prev_id, prev_score, _ = prev
+        # A glyph says two entities are the same thing only when it names
+        # one of them. A plain membrane receptor names neither a GLP-1 nor a
+        # GIP receptor, and both cells are entitled to draw one.
+        if prev and AR.shared_denotation(accepted[0].get("name", ""),
+                                         prev[3], e.get("label", e["id"])):
+            prev = None
+        if (prev and not accepted[0].get("adaptations")
+                and not accepted[0].get("generic_name") and not prev[2]):
+            prev_id, prev_score = prev[0], prev[1]
             if accepted[0]["score"] <= prev_score:
                 msgs.append(
                     f"error: entity {e['id']}: would reuse the asset already given to "
@@ -1001,12 +1122,16 @@ def resolve_spec_assets(spec, strict=False):
                 prov[:] = [a for a in prov if a.get("asset_id") != accepted[0]["asset_id"]]
         if accepted:
             a = accepted[0]
-            used_assets[a["asset_id"]] = (e["id"], a["score"],
-                                          bool(a.get("adaptations")))
+            used_assets[a["asset_id"]] = (
+                e["id"], a["score"],
+                bool(a.get("adaptations")) or bool(a.get("generic_name")),
+                e.get("label", e["id"]))
             if depict_all:
                 e["_depicted"] = True
             e["asset"] = a
             prefer = prefer or a["source_id"]
+            style["author"] = style["author"] or a.get("author")
+            style["source"] = style["source"] or a["source_id"]
             prov.append({k: v for k, v in a.items() if k not in ("svg", "score")})
             msgs.append(f"entity {e['id']}: resolved {a['source_id']} {a['asset_id']} ({a['license']})")
             e["asset"]["_svg"] = a["svg"]
@@ -1045,6 +1170,41 @@ def seg_hits_node(x1, y1, x2, y2, node, pad=8.0):
                 return False
             t1 = min(t1, t)
     return True
+
+
+class ContainerEnd:
+    """A container presented to the arc code as an endpoint.
+
+    A container is an entity, so a relation may point at one: fat mass
+    falling reduces the macrophage infiltrate, and the target is the
+    macrophage. Only leaves became nodes, so such a relation was dropped
+    without a word, which is the worst way for a figure to lose a link.
+    """
+    __slots__ = ("id", "x", "y", "w", "h", "rank", "spec", "role", "prom", "fsc")
+
+    def __init__(self, cid, r, spec):
+        self.id = cid
+        self.x, self.y, self.w, self.h = r["x"], r["y"], r["w"], r["h"]
+        # Aim at the drawing, not at the box it was scaled into.
+        geo = r.get("geometry") or {}
+        bb = DERIVE.outline_bbox(geo.get("outline")) if geo.get("outline") else None
+        if bb and geo.get("inscribed_fraction", 0) >= 0.26:
+            x0, y0, x1, y1 = bb
+            self.x, self.y = r["x"] + x0 * r["w"], r["y"] + y0 * r["h"]
+            self.w, self.h = (x1 - x0) * r["w"], (y1 - y0) * r["h"]
+        self.rank = 0
+        self.spec = spec
+        self.role = spec.get("role", "canonical")
+        self.prom = "normal"
+        self.fsc = 1.0
+
+    @property
+    def cx(self):
+        return self.x + self.w / 2.0
+
+    @property
+    def cy(self):
+        return self.y + self.h / 2.0
 
 
 class Obstacle:
@@ -1199,22 +1359,38 @@ def clear_column(a, b, others, xbounds=None):
 
 
 def head(kind, x, y, angle, colour, sw, filled=True):
+    """A terminal glyph, sized with the stroke it terminates.
+
+    Fixed at 13 units, a head on a heavy accent stroke came out stubby, and
+    where an arc arrived at a shallow angle one of the two arms of the open
+    V lay along the shaft and the glyph read as a kink in the line rather
+    than as an arrowhead.
+    """
     deg = math.degrees(angle)
+    k = 1.0 + 0.22 * max(0.0, sw - 1.4)      # grows with the stroke
+    L, W = 13.0 * k, 6.2 * k
     g = f'<g transform="translate({x:.1f},{y:.1f}) rotate({deg:.1f})">'
     if kind in ("production", "flow"):
         fill = colour if filled else "#ffffff"
-        g += f'<path d="M0,0 L-13,-6 L-13,6 Z" fill="{fill}" stroke="{colour}" stroke-width="{sw*0.8:.1f}"/>'
+        g += (f'<path d="M0,0 L{-L:.1f},{-W:.1f} L{-L:.1f},{W:.1f} Z" fill="{fill}" '
+              f'stroke="{colour}" stroke-width="{sw*0.8:.1f}" stroke-linejoin="round"/>')
     elif kind == "stimulation":
         # Always an open V head. The unfilled variant used for hypothesised
         # relations applies to production and flow heads, not to this one.
-        g += (f'<path d="M-12,-6 L0,0 L-12,6" fill="none" stroke="{colour}" '
+        g += (f'<path d="M{-L*0.92:.1f},{-W*1.05:.1f} L0,0 L{-L*0.92:.1f},{W*1.05:.1f}" '
+              f'fill="none" stroke="{colour}" '
               f'stroke-width="{sw:.1f}" stroke-linejoin="round" stroke-linecap="round"/>')
     elif kind == "catalysis":
-        g += f'<circle cx="-7" cy="0" r="6.5" fill="#ffffff" stroke="{colour}" stroke-width="{sw:.1f}"/>'
+        r = 6.5 * k
+        g += (f'<circle cx="{-r*1.08:.1f}" cy="0" r="{r:.1f}" fill="#ffffff" '
+              f'stroke="{colour}" stroke-width="{sw:.1f}"/>')
     elif kind == "inhibition":
-        g += f'<path d="M0,-9 L0,9" stroke="{colour}" stroke-width="{sw*1.2:.1f}" stroke-linecap="round"/>'
+        g += (f'<path d="M0,{-9*k:.1f} L0,{9*k:.1f}" stroke="{colour}" '
+              f'stroke-width="{sw*1.2:.1f}" stroke-linecap="round"/>')
     elif kind == "transport":
-        g += f'<path d="M-11,-4.5 L0,0 L-11,4.5" fill="none" stroke="{colour}" stroke-width="{sw*0.7:.1f}" stroke-linejoin="round"/>'
+        g += (f'<path d="M{-L*0.85:.1f},{-W*0.73:.1f} L0,0 L{-L*0.85:.1f},{W*0.73:.1f}" '
+              f'fill="none" stroke="{colour}" stroke-width="{sw*0.7:.1f}" '
+              f'stroke-linejoin="round" stroke-linecap="round"/>')
     g += "</g>"
     return g
 
@@ -1425,7 +1601,7 @@ def render(spec, variant="journal"):
                                        r["w"], r["h"],
                                        "frm" + re.sub(r"[^A-Za-z0-9]", "", cid))
                            + '</g>')
-            elif outline and r.get("header", 0) > 24:
+            elif outline and r.get("header", 0) > 24 and anc.get("_svg"):
                 # The silhouette cannot hold the contents, which is the
                 # normal case for an organ: a kidney measures thirteen per
                 # cent usable middle, a liver nineteen. It is drawn as an
@@ -1494,8 +1670,17 @@ def render(spec, variant="journal"):
     # Glyphs are placed first, so an arc label steps around them rather than
     # printing over one, and around every label already set.
     label_boxes = [(n.x, n.y, n.w, n.h) for n in nodes]
+    ent_by_id = {en["id"]: en for en in spec.get("entities", [])}
+
+    def endpoint(eid):
+        if eid in by_id:
+            return by_id[eid]
+        if eid in rects:
+            return ContainerEnd(eid, rects[eid], ent_by_id.get(eid, {"id": eid}))
+        return None
+
     for rel in spec.get("relations", []):
-        a, b = by_id.get(rel["from"]), by_id.get(rel["to"])
+        a, b = endpoint(rel["from"]), endpoint(rel["to"])
         if not a or not b:
             continue
         kind = rel.get("type", "production")
@@ -1602,8 +1787,17 @@ def render(spec, variant="journal"):
         else:
             dx, dy = ex - x1, ey - y1
             k = 0.32
-            c1x, c1y = x1 + dx * k, y1 + dy * k * 0.2
-            c2x, c2y = ex - dx * k, ey - dy * k * 0.2
+            # Leave and arrive along the figure's own reading direction.
+            # Flattening the vertical component of an arc in a figure that
+            # reads downwards made it arrive almost tangent to its target,
+            # and the head then pointed across the corner of the box rather
+            # than into it, which reads as a kink in the line.
+            if vertical or abs(dy) >= abs(dx) * 1.6:
+                c1x, c1y = x1 + dx * k * 0.2, y1 + dy * k
+                c2x, c2y = ex - dx * k * 0.2, ey - dy * k
+            else:
+                c1x, c1y = x1 + dx * k, y1 + dy * k * 0.2
+                c2x, c2y = ex - dx * k, ey - dy * k * 0.2
             d = f"M{x1:.1f},{y1:.1f} C{c1x:.1f},{c1y:.1f} {c2x:.1f},{c2y:.1f} {ex:.1f},{ey:.1f}"
             ang = math.atan2(ey - c2y, ex - c2x)
 
@@ -1676,6 +1870,12 @@ def render(spec, variant="journal"):
             for ox, oy in offs:
                 bx, by = lx - lw / 2.0 + ox, ly - lh + oy
                 if bx < lim_lo or bx + lw > lim_hi:
+                    continue
+                # Not inside a structure this relation has nothing to do
+                # with: a label reading "infiltration falls" was set in the
+                # middle of the pancreatic islet.
+                if any(boxes_overlap((bx, by, lw, lh), (o.x, o.y, o.w, o.h))
+                       for o in obstacles if isinstance(o, Obstacle)):
                     continue
                 if not any(boxes_overlap((bx, by, lw, lh), bb) for bb in label_boxes):
                     lx, ly = lx + ox, ly + oy

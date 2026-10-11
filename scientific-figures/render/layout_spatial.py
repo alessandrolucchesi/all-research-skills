@@ -59,6 +59,10 @@ LEVEL_SCALE = {0: 1.0, 1: 1.25, 2: 1.6, 3: 1.9, 4: 2.2, 5: 2.4}
 
 PAD = 22.0          # inside a container, around its contents
 GAP = 26.0          # between siblings
+# Two drawn cells need more than two boxed ones. A silhouette reaches the
+# edge of its box by construction, so neighbouring outlines touched and an
+# adipocyte was drawn through a macrophage.
+DRAWN_GAP = 62.0
 HEADER = 20.0       # room for the container's own label
 # A container whose drawing cannot hold its contents still has to be shown,
 # or an organ disappears into a labelled rectangle. The silhouette is drawn
@@ -160,7 +164,7 @@ class Box:
     """A laid-out entity: leaf or container."""
     __slots__ = ("id", "spec", "x", "y", "w", "h", "children", "is_container",
                  "slot", "geometry", "content", "rank", "label_mode", "pad_top",
-                 "header")
+                 "header", "drawn")
 
     def __init__(self, eid, espec):
         self.id = eid
@@ -168,6 +172,7 @@ class Box:
         self.label_mode = "full"
         self.pad_top = 0.0
         self.header = HEADER
+        self.drawn = False
         self.x = self.y = 0.0
         self.w = self.h = 0.0
         self.children = []
@@ -210,6 +215,15 @@ def _rows_of(interior, target_aspect=None):
     return best
 
 
+def _gap_after(c, nxt):
+    return DRAWN_GAP if (c.drawn and nxt is not None and nxt.drawn) else GAP
+
+
+def _row_w(r):
+    return sum(c.w for c in r) + sum(_gap_after(c, r[i + 1])
+                                     for i, c in enumerate(r[:-1]))
+
+
 def _row_h(r):
     """A row is as tall as its tallest child plus whatever that child reserves
     above itself, which is where a container's boundary labels live."""
@@ -219,9 +233,49 @@ def _row_h(r):
 def _rows_extent(rows):
     if not rows:
         return 120.0, 60.0
-    w = max(sum(c.w for c in r) + GAP * (len(r) - 1) for r in rows)
+    w = max(_row_w(r) for r in rows)
     h = sum(_row_h(r) for r in rows) + GAP * (len(rows) - 1)
     return w, h
+
+
+def pack_roots(boxes, gutter, target=1.5):
+    """Break the top level into rows instead of one long line.
+
+    Everything at the top level used to be laid side by side, so a figure
+    with two regions and five free entities came out more than two thousand
+    units wide and its type fell under the floor. A published figure of the
+    same content puts the regions on one line and the outcomes under them.
+
+    Rows are filled greedily up to a width, in the order the author declared
+    them, and the width is the one whose result comes closest to a readable
+    proportion. Chunking into equal counts instead put a region between two
+    outcome measures and ran their arcs back across it.
+    """
+    if len(boxes) < 2:
+        return [list(boxes)]
+    widest = max(b.w for b in boxes)
+    total = sum(b.w for b in boxes) + gutter * (len(boxes) - 1)
+    best, best_cost = None, None
+    steps = 14
+    for i in range(steps + 1):
+        budget = widest + (total - widest) * (i / steps)
+        rows, cur, cw = [], [], 0.0
+        for b in boxes:
+            add = b.w if not cur else b.w + gutter
+            if cur and cw + add > budget:
+                rows.append(cur)
+                cur, cw = [b], b.w
+            else:
+                cur.append(b)
+                cw += add
+        if cur:
+            rows.append(cur)
+        w = max(sum(b.w for b in r) + gutter * (len(r) - 1) for r in rows)
+        h = sum(max(b.h for b in r) for r in rows) + gutter * 0.9 * (len(rows) - 1)
+        cost = abs((w / max(h, 1.0)) / target - 1.0)
+        if best_cost is None or cost < best_cost - 1e-9:
+            best, best_cost = rows, cost
+    return best
 
 
 def measure(bid, ents, children, node_size, geoms=None, depth=0, label_w=None):
@@ -280,6 +334,7 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0, label_w=None):
         rws = _rows_of(interior, nat0)
         return rws, _rows_extent(rws)
 
+    b.drawn = bool(drawn0)
     rows0, (cw, chh) = _fit("full")
     b.content = (0.0, 0.0, cw, chh)
 
@@ -335,8 +390,16 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0, label_w=None):
             if max(gw, gh) <= MAX_FRAME_GROWTH:
                 bw, bh = max(bw, need_w), max(bh, need_h)
             else:
+                # The drawing cannot hold the contents at a tolerable size,
+                # so it stops being the container. It must not stop being
+                # in the figure: demoted and left at that, an illustrated
+                # kidney came out as a rectangle with the word KIDNEY in
+                # it. It becomes the emblem instead, and the header grows.
                 b.geometry = dict(b.geometry or {}, kind="mark",
                                   inscribed_fraction=0.0, _demoted=True)
+                if b.header <= HEADER:
+                    bh += EMBLEM_HEADER - b.header
+                    b.header = EMBLEM_HEADER
     if boundary:
         bw = max(bw, sum(c.w + GAP for c in boundary) - GAP + 2 * PAD)
     if b.header > HEADER:
@@ -386,11 +449,10 @@ def place(b, x, y):
 
     ry = cy0
     for r in rows:
-        rw = sum(c.w for c in r) + GAP * (len(r) - 1)
-        rx = cx0 + max(0.0, (cw - rw) / 2.0)
-        for c in r:
+        rx = cx0 + max(0.0, (cw - _row_w(r)) / 2.0)
+        for i, c in enumerate(r):
             place(c, rx, ry + c.pad_top)
-            rx += c.w + GAP
+            rx += c.w + _gap_after(c, r[i + 1] if i + 1 < len(r) else None)
         ry += _row_h(r) + GAP
 
     # Boundary children straddle the edge, which is where a reader expects a

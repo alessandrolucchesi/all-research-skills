@@ -1,19 +1,19 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 586 754" width="178.0mm" height="229.0mm" font-family="Helvetica, Arial, sans-serif">
 <rect x="0" y="0" width="586" height="754" fill="#ffffff"/>
 <path d="M293.0,84.0 L293.0,104.0 L293.0,104.0 L293.0,124.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(293.0,138.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<g transform="translate(293.0,138.0) rotate(90.0)"><path d="M0,0 L-13.9,-6.6 L-13.9,6.6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4" stroke-linejoin="round"/></g>
 <path d="M293.0,178.0 L293.0,198.0 L293.0,198.0 L293.0,218.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(293.0,232.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<g transform="translate(293.0,232.0) rotate(90.0)"><path d="M0,0 L-13.9,-6.6 L-13.9,6.6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4" stroke-linejoin="round"/></g>
 <path d="M293.0,272.0 L293.0,292.0 L150.4,292.0 L150.4,312.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(150.4,326.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<g transform="translate(150.4,326.0) rotate(90.0)"><path d="M0,0 L-13.9,-6.6 L-13.9,6.6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4" stroke-linejoin="round"/></g>
 <text x="156.4" y="285.6" font-size="12.0" text-anchor="middle" fill="#8e8e8e">low</text>
 <path d="M293.0,272.0 L293.0,292.0 L448.4,292.0 L448.4,312.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(448.4,326.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<g transform="translate(448.4,326.0) rotate(90.0)"><path d="M0,0 L-13.9,-6.6 L-13.9,6.6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4" stroke-linejoin="round"/></g>
 <text x="454.4" y="308.0" font-size="12.0" text-anchor="middle" fill="#8e8e8e">intermediate or high</text>
 <path d="M448.4,366.0 L448.4,396.5 L293.0,396.5 L293.0,427.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(293.0,441.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<g transform="translate(293.0,441.0) rotate(90.0)"><path d="M0,0 L-13.9,-6.6 L-13.9,6.6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4" stroke-linejoin="round"/></g>
 <path d="M293.0,481.0 L293.0,501.0 L293.0,501.0 L293.0,521.0" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(293.0,535.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3"/></g>
+<g transform="translate(293.0,535.0) rotate(90.0)"><path d="M0,0 L-17.3,-8.2 L-17.3,8.2 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3" stroke-linejoin="round"/></g>
 <path d="M186.9,44.0 h225.2 v40.0 h-225.2 l-13,-20.0 z" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
 <text x="293.0" y="69.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Unexplained dyspnoea in MPN</text>
 <rect x="170.1" y="138.0" width="246.0" height="40.0" rx="4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
@@ -32,18 +32,18 @@
 <text x="293.0" y="580.7" font-size="15.0" text-anchor="middle" fill="#1a1a1a">confirmed</text>
 <line x1="34.0" y1="636.0" x2="552.1" y2="636.0" stroke="#dddddd" stroke-width="1"/>
 <path d="M34.0,657.0 L68.0,657.0 L68.0,664.0 L88.0,664.0" fill="none" stroke="#1a1a1a" stroke-width="2.0"/>
-<g transform="translate(102.0,664.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<g transform="translate(102.0,664.0) rotate(0.0)"><path d="M0,0 L-14.7,-7.0 L-14.7,7.0 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round"/></g>
 <text x="118.0" y="669.1" font-size="12.3" fill="#1a1a1a">procedural flow</text>
 <line x1="34.0" y1="690.0" x2="88.0" y2="690.0" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(102.0,690.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<g transform="translate(102.0,690.0) rotate(0.0)"><path d="M0,0 L-14.7,-7.0 L-14.7,7.0 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round"/></g>
 <text x="118.0" y="695.1" font-size="12.3" fill="#1a1a1a">established (cited)</text>
 <line x1="34.0" y1="716.0" x2="88.0" y2="716.0" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(102.0,716.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<g transform="translate(102.0,716.0) rotate(0.0)"><path d="M0,0 L-14.7,-7.0 L-14.7,7.0 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round"/></g>
 <text x="118.0" y="721.1" font-size="12.3" fill="#1a1a1a">demonstrated here</text>
 <line x1="293.0" y1="664.0" x2="347.0" y2="664.0" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round"/>
-<g transform="translate(361.0,664.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<g transform="translate(361.0,664.0) rotate(0.0)"><path d="M0,0 L-13.9,-6.6 L-13.9,6.6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4" stroke-linejoin="round"/></g>
 <text x="377.0" y="669.1" font-size="12.3" fill="#1a1a1a">canonical background</text>
 <line x1="293.0" y1="690.0" x2="347.0" y2="690.0" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round"/>
-<g transform="translate(361.0,690.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3"/></g>
+<g transform="translate(361.0,690.0) rotate(0.0)"><path d="M0,0 L-17.3,-8.2 L-17.3,8.2 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3" stroke-linejoin="round"/></g>
 <text x="377.0" y="695.1" font-size="12.3" fill="#1a1a1a">contribution of this work</text>
 </svg>

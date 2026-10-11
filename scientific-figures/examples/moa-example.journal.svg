@@ -8,17 +8,17 @@
 <text x="814.6" y="243.2" font-size="11.7" fill="#5b7384" letter-spacing="0.6">NUCLEUS</text>
 <path d="M138.4,110.0 C174.6,115.2 215.4,186.8 251.6,192.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
 <path d="M332.0,214.0 C351.2,214.0 372.8,214.0 392.0,214.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(406.0,214.0) rotate(0.0)"><path d="M-12,-6 L0,0 L-12,6" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></g>
+<g transform="translate(406.0,214.0) rotate(0.0)"><path d="M-12.7,-6.9 L0,0 L-12.7,6.9" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linejoin="round" stroke-linecap="round"/></g>
 <path d="M506.0,214.0 C525.5,214.0 547.5,214.0 567.0,214.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(580.0,214.0) rotate(0.0)"><circle cx="-7" cy="0" r="6.5" fill="#ffffff" stroke="#8e8e8e" stroke-width="1.7"/></g>
+<g transform="translate(580.0,214.0) rotate(0.0)"><circle cx="-7.5" cy="0" r="6.9" fill="#ffffff" stroke="#8e8e8e" stroke-width="1.7"/></g>
 <path d="M745.0,236.0 C764.6,237.0 786.7,251.3 806.3,252.4" fill="none" stroke="#8e8e8e" stroke-width="1.0" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(819.8,256.0) rotate(3.1)"><path d="M-11,-4.5 L0,0 L-11,4.5" fill="none" stroke="#8e8e8e" stroke-width="0.7" stroke-linejoin="round"/></g>
+<g transform="translate(819.8,256.0) rotate(3.1)"><path d="M-11.0,-4.5 L0,0 L-11.0,4.5" fill="none" stroke="#8e8e8e" stroke-width="0.7" stroke-linejoin="round" stroke-linecap="round"/></g>
 <path d="M984.8,278.0 C1004.0,278.0 1025.6,278.0 1044.8,278.0" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(1058.8,278.0) rotate(0.0)"><path d="M-12,-6 L0,0 L-12,6" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linejoin="round" stroke-linecap="round"/></g>
-<path d="M456.0,170.0 C456.0,171.3 456.0,189.7 456.0,191.0" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(456.0,192.0) rotate(90.0)"><path d="M0,-9 L0,9" stroke="#0b6ea8" stroke-width="3.5" stroke-linecap="round"/></g>
+<g transform="translate(1058.8,278.0) rotate(0.0)"><path d="M-15.9,-8.7 L0,0 L-15.9,8.7" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linejoin="round" stroke-linecap="round"/></g>
+<path d="M456.0,170.0 C456.0,176.7 456.0,184.3 456.0,191.0" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(456.0,192.0) rotate(90.0)"><path d="M0,-12.0 L0,12.0" stroke="#0b6ea8" stroke-width="3.5" stroke-linecap="round"/></g>
 <path d="M1115.8,298.0 L1115.8,328.0 L282.0,328.0 L282.0,248.0" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-dasharray="2 5" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(282.0,234.0) rotate(-90.0)"><path d="M-12,-6 L0,0 L-12,6" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/></g>
+<g transform="translate(282.0,234.0) rotate(-90.0)"><path d="M-13.5,-7.4 L0,0 L-13.5,7.4" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/></g>
 <text x="698.9" y="316.6" font-size="12.0" text-anchor="middle" fill="#1a1a1a">feedback</text>
 <rect x="60.0" y="68.0" width="96.0" height="40.0" rx="20.0" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
 <text x="108.0" y="93.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Ligand</text>
@@ -40,32 +40,32 @@
 <text x="456.0" y="153.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Inhibitor</text>
 <line x1="34.0" y1="384.8" x2="1217.7" y2="384.8" stroke="#dddddd" stroke-width="1"/>
 <line x1="34.0" y1="412.8" x2="88.0" y2="412.8" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(102.0,412.8) rotate(0.0)"><path d="M-12,-6 L0,0 L-12,6" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/></g>
+<g transform="translate(102.0,412.8) rotate(0.0)"><path d="M-13.5,-7.4 L0,0 L-13.5,7.4" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/></g>
 <text x="118.0" y="417.9" font-size="12.3" fill="#1a1a1a">stimulation</text>
 <line x1="34.0" y1="438.8" x2="89.0" y2="438.8" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(102.0,438.8) rotate(0.0)"><circle cx="-7" cy="0" r="6.5" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/></g>
+<g transform="translate(102.0,438.8) rotate(0.0)"><circle cx="-7.9" cy="0" r="7.4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/></g>
 <text x="118.0" y="443.9" font-size="12.3" fill="#1a1a1a">catalysis</text>
 <line x1="34.0" y1="464.8" x2="101.0" y2="464.8" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(102.0,464.8) rotate(0.0)"><path d="M0,-9 L0,9" stroke="#1a1a1a" stroke-width="2.4" stroke-linecap="round"/></g>
+<g transform="translate(102.0,464.8) rotate(0.0)"><path d="M0,-10.2 L0,10.2" stroke="#1a1a1a" stroke-width="2.4" stroke-linecap="round"/></g>
 <text x="118.0" y="469.9" font-size="12.3" fill="#1a1a1a">inhibition</text>
 <line x1="34.0" y1="490.8" x2="88.0" y2="490.8" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(102.0,490.8) rotate(0.0)"><path d="M-11,-4.5 L0,0 L-11,4.5" fill="none" stroke="#1a1a1a" stroke-width="1.4" stroke-linejoin="round"/></g>
+<g transform="translate(102.0,490.8) rotate(0.0)"><path d="M-12.5,-5.1 L0,0 L-12.5,5.1" fill="none" stroke="#1a1a1a" stroke-width="1.4" stroke-linejoin="round" stroke-linecap="round"/></g>
 <text x="118.0" y="495.9" font-size="12.3" fill="#1a1a1a">transport</text>
 <line x1="34.0" y1="516.8" x2="102.0" y2="516.8" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
 <text x="118.0" y="521.9" font-size="12.3" fill="#1a1a1a">binding</text>
 <line x1="625.8" y1="412.8" x2="679.8" y2="412.8" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(693.8,412.8) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<g transform="translate(693.8,412.8) rotate(0.0)"><path d="M0,0 L-14.7,-7.0 L-14.7,7.0 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round"/></g>
 <text x="709.8" y="417.9" font-size="12.3" fill="#1a1a1a">established (cited)</text>
 <line x1="625.8" y1="438.8" x2="679.8" y2="438.8" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(693.8,438.8) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<g transform="translate(693.8,438.8) rotate(0.0)"><path d="M0,0 L-14.7,-7.0 L-14.7,7.0 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round"/></g>
 <text x="709.8" y="443.9" font-size="12.3" fill="#1a1a1a">demonstrated here</text>
 <line x1="625.8" y1="464.8" x2="679.8" y2="464.8" stroke="#1a1a1a" stroke-width="2.0" stroke-dasharray="2 5" stroke-linecap="round"/>
-<g transform="translate(693.8,464.8) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<g transform="translate(693.8,464.8) rotate(0.0)"><path d="M0,0 L-14.7,-7.0 L-14.7,7.0 Z" fill="#ffffff" stroke="#1a1a1a" stroke-width="1.6" stroke-linejoin="round"/></g>
 <text x="709.8" y="469.9" font-size="12.3" fill="#1a1a1a">hypothesised</text>
 <line x1="625.8" y1="490.8" x2="679.8" y2="490.8" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round"/>
-<g transform="translate(693.8,490.8) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<g transform="translate(693.8,490.8) rotate(0.0)"><path d="M0,0 L-13.9,-6.6 L-13.9,6.6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4" stroke-linejoin="round"/></g>
 <text x="709.8" y="495.9" font-size="12.3" fill="#1a1a1a">canonical background</text>
 <line x1="625.8" y1="516.8" x2="679.8" y2="516.8" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round"/>
-<g transform="translate(693.8,516.8) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3"/></g>
+<g transform="translate(693.8,516.8) rotate(0.0)"><path d="M0,0 L-17.3,-8.2 L-17.3,8.2 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3" stroke-linejoin="round"/></g>
 <text x="709.8" y="521.9" font-size="12.3" fill="#1a1a1a">contribution of this work</text>
 </svg>
