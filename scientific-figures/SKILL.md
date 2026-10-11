@@ -26,6 +26,10 @@ These are refusals, not preferences. Violating any of them produces a figure tha
 
 **anatomical** places an entity inside whatever contains it. Position carries location, arcs carry causality, and rank only orders siblings within one region. This is the engine for mechanisms and pathways, and it exists because the flow engine makes position encode what the arrows already encode, which leaves nothing to say where the reader is: a glyph whose only reason to be in column three is that it is third in a chain has nothing to draw around it, so it gets a box.
 
+Either engine can be partitioned. `meta.phases` divides the canvas into bands along one axis, each entity declaring which phase it occupies, and each band is laid out by the engines above, so one phase can hold a containment scene and the next a flow. Three of the four published exemplars studied are built this way: before and after treatment, first line and relapse, control and disease. The reader takes position along the axis as meaning, which is why a phase is a band of the canvas and not a colour or a note.
+
+A partition has already spent the horizontal axis, so content inside a band reads downwards unless `meta.orientation` says otherwise; laid out sideways, three bands of four ranks put the type under the legibility floor. Name the axis in `meta.phase_axis` when it is ordered and a single arrow is drawn under the bands; omit it for an unordered partition such as side-by-side conditions, where an arrow would assert a progression the figure does not claim. A structure and its contents occupy the same phase, and something that persists across phases is drawn once in each with a relation between the two, which is what the validator enforces: the same glyph cannot straddle two phases, because its position would then mean nothing.
+
 A container is simply an entity with contents (`contains`, or children declaring `inside`), so a macrophage can hold a kinase and still be drawn as a macrophage. Three slots, deliberately not named after any anatomy so the same construct serves a cell, a vessel, a reactor or a catchment: `interior` by default, `boundary` for anything straddling the edge, and nested containers for the rest. The ontology's scale ladder validates containment, a container must stand higher than its contents, and sets default sizes so an organ is not drawn at the size of a metabolite.
 
 ## Depict, do not box
@@ -177,3 +181,4 @@ Every glyph is sized from one text-metrics function. The `process` class is the 
 - `examples/pictogram-example.yaml` — resolved pictograms, generic substitution, lane routing
 - `examples/algorithm-example.yaml` — vertical clinical algorithm, PPTX output
 - `examples/anatomical-example.yaml` — containment, boundary slots, resolved anchors
+- `examples/phased-example.yaml` — a partition along an axis, three bands, a cross-phase relation

@@ -252,6 +252,33 @@ def validate(spec, sources=None):
         elif ev != "demonstrated_here" and not r.get("source"):
             errors.append(f"{tag}: evidence '{ev}' requires a source")
 
+    phases = meta.get("phases") or []
+    if phases:
+        pids = {p["id"] for p in phases}
+        parent_of = {}
+        for e in spec.get("entities", []):
+            for ch in e.get("contains", []) or []:
+                parent_of[ch] = e["id"]
+            if e.get("inside"):
+                parent_of[e["id"]] = e["inside"]
+        for e in spec.get("entities", []):
+            ph = e.get("phase")
+            if ph and ph not in pids:
+                errors.append(f"entity {e['id']}: unknown phase '{ph}'")
+            owner = parent_of.get(e["id"])
+            if owner:
+                up = ents.get(owner, {}).get("phase")
+                if ph and up and ph != up:
+                    errors.append(
+                        f"entity {e['id']}: phase '{ph}' contradicts its container "
+                        f"{owner} ('{up}'). A structure and its contents occupy the "
+                        f"same phase; a thing that persists across phases is drawn "
+                        f"once in each, with a relation between the two.")
+            elif not ph:
+                errors.append(
+                    f"entity {e['id']}: meta.phases partitions the figure, so every "
+                    f"top-level entity must declare which phase it belongs to")
+
     if meta.get("figure_class") in {"consort_flow", "prisma_flow", "stard_flow"}:
         errors.append(
             "band A figure classes must be compiled by the standard-conformant template, not by this renderer"
@@ -504,7 +531,93 @@ def layout_anatomical(spec, gutter=GUTTER, font=BASE_FONT):
     return nodes, by_id, rects, width, height
 
 
+PHASE_HEAD = 34.0       # band heading, above everything the phase holds
+PHASE_SEP = 46.0        # clearance either side of the rule between two phases
+
+
 def layout(spec, gutter=GUTTER, font=BASE_FONT):
+    if spec["meta"].get("phases"):
+        return layout_phased(spec, gutter=gutter, font=font)
+    return layout_one(spec, gutter=gutter, font=font)
+
+
+def layout_phased(spec, gutter=GUTTER, font=BASE_FONT):
+    """Partition the canvas along one axis and lay each phase out on its own.
+
+    Three of the four exemplars studied are partitioned this way: before and
+    after treatment, first line and relapse, control and disease. The axis is
+    the figure's spine, and a reader takes position along it as meaning,
+    which is why a phase is a band of the canvas rather than a colour or a
+    note. Each band is laid out by the ordinary engines, so a phase can hold
+    a containment scene and the next one a flow.
+    """
+    phases = spec["meta"]["phases"]
+    ents = spec.get("entities", [])
+    rels = spec.get("relations", [])
+    owner = {}
+    for e in ents:
+        for ch in e.get("contains", []) or []:
+            owner[ch] = e["id"]
+        if e.get("inside"):
+            owner[e["id"]] = e["inside"]
+
+    def phase_of(eid, guard=0):
+        e = next((x for x in ents if x["id"] == eid), None)
+        if not e:
+            return None
+        if e.get("phase"):
+            return e["phase"]
+        up = owner.get(eid)
+        return phase_of(up, guard + 1) if up and guard < 12 else None
+
+    nodes, by_id, rects, bands = [], {}, {}, []
+    x = MARGIN
+    top = MARGIN + 28.0 + PHASE_HEAD
+    for ph in phases:
+        ids = {e["id"] for e in ents if phase_of(e["id"]) == ph["id"]}
+        if not ids:
+            continue
+        sub = dict(spec)
+        sub["meta"] = {k: v for k, v in spec["meta"].items() if k != "phases"}
+        # The partition has already spent the horizontal axis, so the content
+        # of a band reads downwards unless the author says otherwise. Laid
+        # out sideways, three bands of four ranks put the type under the
+        # legibility floor before the figure was even finished.
+        sub["meta"].setdefault("orientation", "vertical")
+        sub["entities"] = [e for e in ents if e["id"] in ids]
+        sub["relations"] = [r for r in rels
+                            if r.get("from") in ids and r.get("to") in ids]
+        sn, sby, srects, sw, sh = layout_one(sub, gutter=gutter, font=font)
+        dx, dy = x - MARGIN, top - (MARGIN + 28.0)
+        for n in sn:
+            n.x += dx
+            n.y += dy
+        for r in srects.values():
+            r["x"] += dx
+            r["y"] += dy
+        nodes.extend(sn)
+        by_id.update(sby)
+        for k, r in srects.items():
+            rects[k] = r
+        bw = sw - 2 * MARGIN
+        bands.append(dict(id=ph["id"], label=ph["label"], note=ph.get("note"),
+                          x=x - PHASE_SEP / 2.0, w=bw + PHASE_SEP,
+                          y=MARGIN + 20.0, h=sh - MARGIN - 20.0 + dy))
+        x += bw + PHASE_SEP
+
+    # Every band reaches the same depth, so the rules read as one partition
+    # and not as a ragged set of boxes.
+    if bands:
+        foot = max(b["y"] + b["h"] for b in bands)
+        for b in bands:
+            b["h"] = foot - b["y"]
+    spec["_bands"] = bands
+    width = max([n.x + n.w for n in nodes] + [b["x"] + b["w"] for b in bands]) + MARGIN
+    height = max([n.y + n.h for n in nodes] + [b["y"] + b["h"] for b in bands]) + MARGIN
+    return nodes, by_id, rects, width, height
+
+
+def layout_one(spec, gutter=GUTTER, font=BASE_FONT):
     mode = spec["meta"].get("layout", "auto")
     if mode == "anatomical" or (
             mode == "auto" and spec["meta"].get("figure_class") in
@@ -904,7 +1017,7 @@ class Obstacle:
         self.w, self.h = r["w"] - 2 * inset, r["h"] - 2 * inset
 
 
-def containment_router(nodes, rects):
+def containment_router(nodes, rects, bands=None):
     """Return (obstacles_for, bounds_for) closed over the containment tree."""
     # The flow engines carry containment on `compartment` and the anatomical
     # engine on the tree it built; either way it is the same question, and
@@ -941,6 +1054,14 @@ def containment_router(nodes, rects):
                 r = rects[cid]
                 return (r["y"] + 12.0, r["y"] + r["h"] - 12.0,
                         r["x"] + 12.0, r["x"] + r["w"] - 12.0)
+        if bands:
+            # A relation that crosses phases still belongs to the partition.
+            # Unbounded, the first one found its lane below the axis arrow
+            # and left a third of the canvas empty on the way.
+            return (min(bd["y"] for bd in bands) + PHASE_HEAD,
+                    max(bd["y"] + bd["h"] for bd in bands) - 8.0,
+                    min(bd["x"] for bd in bands) + 8.0,
+                    max(bd["x"] + bd["w"] for bd in bands) - 8.0)
         return None
 
     return obstacles_for, bounds_for
@@ -1180,6 +1301,36 @@ def render(spec, variant="journal"):
     out.append("")  # placeholder for the opening tag
     out.append("")  # placeholder for the background, sized once the canvas is final
 
+    # phase bands, under everything: a heading, a rule between neighbours
+    # and, where the axis is ordered, one arrow saying which way it runs.
+    # The partition is the figure's spine, so it is drawn before the content
+    # and never competes with it.
+    bands = spec.get("_bands") or []
+    for i, bd in enumerate(bands):
+        if i:
+            rx = bd["x"]
+            out.append(f'<path d="M{rx:.1f},{bd["y"]:.1f} L{rx:.1f},{bd["y"]+bd["h"]:.1f}" '
+                       f'stroke="{LABEL_MUTED}" stroke-width="{sw*0.7:.1f}" '
+                       f'stroke-dasharray="3 7" fill="none" opacity="0.75"/>')
+        cx = bd["x"] + bd["w"] / 2.0
+        out.append(f'<text x="{cx:.1f}" y="{bd["y"]+16:.1f}" font-size="{font*0.9:.1f}" '
+                   f'text-anchor="middle" fill="{INK}" letter-spacing="0.5">'
+                   f'{esc(bd["label"].upper())}</text>')
+        if bd.get("note"):
+            out.append(f'<text x="{cx:.1f}" y="{bd["y"]+32:.1f}" font-size="{font*0.74:.1f}" '
+                       f'text-anchor="middle" fill="{LABEL_MUTED}">{esc(bd["note"])}</text>')
+    axis = spec["meta"].get("phase_axis")
+    if bands and axis:
+        ay = max(b["y"] + b["h"] for b in bands) + 16.0
+        x0 = bands[0]["x"] + 8.0
+        x1 = bands[-1]["x"] + bands[-1]["w"] - 8.0
+        out.append(f'<path d="M{x0:.1f},{ay:.1f} L{x1-12:.1f},{ay:.1f}" fill="none" '
+                   f'stroke="{LABEL_MUTED}" stroke-width="{sw*0.7:.1f}"/>')
+        out.append(head("production", x1, ay, 0.0, LABEL_MUTED, sw * 0.7))
+        out.append(f'<text x="{x0:.1f}" y="{ay-7:.1f}" font-size="{font*0.74:.1f}" '
+                   f'fill="{LABEL_MUTED}">{esc(axis)}</text>')
+        height = max(height, ay + 22.0)
+
     # compartments, outermost first
     for cid, r in sorted(rects.items(), key=lambda kv: kv[1]["depth"]):
         used["comp_types"].add(r["type"])
@@ -1254,7 +1405,7 @@ def render(spec, variant="journal"):
                    f'fill="{LABEL_MUTED}" letter-spacing="0.6">{esc(r["label"].upper())}</text>')
 
     # relations under the nodes
-    obstacles_for, bounds_for = containment_router(nodes, rects)
+    obstacles_for, bounds_for = containment_router(nodes, rects, bands)
     for rel in spec.get("relations", []):
         a, b = by_id.get(rel["from"]), by_id.get(rel["to"])
         if not a or not b:

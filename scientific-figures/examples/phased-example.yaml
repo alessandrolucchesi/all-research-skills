@@ -1,0 +1,112 @@
+# A figure partitioned along an axis. Three of the four published exemplars
+# studied for this skill are built this way: the reader takes position along
+# the axis as meaning, so a phase is a band of the canvas and not a colour or
+# a note. Each band is laid out by the ordinary engines.
+meta:
+  title: Platelet clearance across the course of immune thrombocytopenia
+  band: B
+  figure_class: mechanism_of_action
+  target: oa_cc_by
+  purpose: explanatory
+  layout: flow
+  claim: >-
+    Opsonisation redirects the platelet to splenic macrophage phagocytosis,
+    and SYK inhibition interrupts the step downstream of Fc receptor
+    engagement rather than removing the autoantibody.
+  phases:
+    - id: steady
+      label: Steady state
+      note: physiological turnover
+    - id: autoimmune
+      label: Autoimmune phase
+      note: anti-GP IIb/IIIa IgG present
+    - id: treated
+      label: Under SYK inhibition
+      note: fostamatinib
+  phase_axis: disease course
+
+entities:
+  - id: plt
+    label: Platelet
+    class: cell
+    phase: steady
+    identity: platelet
+  - id: mac
+    label: Macrophage
+    class: cell
+    qualifier: splenic red pulp
+    phase: steady
+    identity: macrophage
+
+  - id: autoab
+    label: Autoantibody
+    class: macromolecule
+    qualifier: anti-GP IIb/IIIa IgG
+    phase: autoimmune
+    identity: antibody
+  - id: plt_op
+    label: Opsonised platelet
+    class: cell
+    phase: autoimmune
+    identity: platelet
+  - id: fcr
+    label: Fc receptor
+    class: receptor
+    phase: autoimmune
+  - id: phago
+    label: Phagocytosis
+    class: process
+    phase: autoimmune
+
+  - id: fosta
+    label: Fostamatinib
+    class: drug
+    qualifier: R406, active metabolite
+    phase: treated
+  - id: syk
+    label: SYK
+    class: macromolecule
+    qualifier: spleen tyrosine kinase
+    phase: treated
+  - id: survival
+    label: Platelet survival
+    class: measure
+    phase: treated
+
+relations:
+  - from: plt
+    to: mac
+    type: transport
+    evidence: established
+    source: "Grozovsky 2015"
+    label: senescent clearance
+  - from: autoab
+    to: plt_op
+    type: binding
+    evidence: established
+    source: "Cines 2009"
+  - from: plt_op
+    to: fcr
+    type: binding
+    evidence: established
+    source: "Cines 2009"
+  - from: fcr
+    to: phago
+    type: stimulation
+    evidence: established
+    source: "Cines 2009"
+  - from: fosta
+    to: syk
+    type: inhibition
+    evidence: established
+    source: "Bussel 2018"
+  - from: syk
+    to: survival
+    type: production
+    evidence: demonstrated_here
+    label: restored
+  - from: fcr
+    to: syk
+    type: stimulation
+    evidence: established
+    source: "Bussel 2018"

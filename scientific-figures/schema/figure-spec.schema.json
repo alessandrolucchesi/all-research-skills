@@ -106,6 +106,35 @@
           ],
           "default": "auto",
           "description": "flow ranks entities topologically into columns, which is right for algorithms and study designs. anatomical places an entity inside what contains it, so position carries location and the arcs carry causality; right for mechanisms and pathways. auto picks anatomical for a mechanism or pathway whose entities declare containment."
+        },
+        "phases": {
+          "type": "array",
+          "minItems": 2,
+          "description": "Partition of the figure along one axis: time, disease stage, experimental condition. Each phase becomes a band of the canvas with its own heading. Entities declare which phase they belong to.",
+          "items": {
+            "type": "object",
+            "required": [
+              "id",
+              "label"
+            ],
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              },
+              "note": {
+                "type": "string",
+                "description": "a second line under the heading, set smaller"
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "phase_axis": {
+          "type": "string",
+          "description": "Name of the axis the phases run along, set beside the directional arrow: 'time', 'line of therapy', 'disease stage'. Omit for an unordered partition, such as side-by-side conditions, and no arrow is drawn."
         }
       }
     },
@@ -303,6 +332,10 @@
                 "type": "string"
               }
             }
+          },
+          "phase": {
+            "type": "string",
+            "description": "id of the phase in meta.phases this entity belongs to. Contents inherit their container's phase and may not contradict it."
           }
         }
       }
