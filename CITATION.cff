@@ -8,14 +8,20 @@ authors:
     orcid: "https://orcid.org/0000-0002-0624-5311"
     affiliation: "IRST \"Dino Amadori\" IRCCS, Meldola, Italy"
 abstract: >-
-  A collection of research tooling skills. The first, scientific-figures,
-  compiles a declarative specification into journal-ready vector
-  figures for scientific manuscripts. Relations carry a mandatory evidence
-  level rendered through a dedicated visual channel, so a proposed mechanism
-  cannot be drawn as a demonstrated one; pictorial assets resolve against a
-  registry of open-licensed libraries under an enforced licence gate; and
-  type size is treated as a hard constraint at the target column width.
+  Skills for preparing a scientific manuscript, built on one principle: a
+  plausible detail completed from memory is never accepted in place of a
+  retrieved one. bibliography-verification matches every reference against
+  PubMed as written, separating out the entries PubMed cannot see rather
+  than passing them, and repairs nothing silently. scientific-figures
+  compiles a declarative specification into journal-ready vector figures;
+  relations carry a mandatory evidence level rendered through a dedicated
+  visual channel, so a proposed mechanism cannot be drawn as a demonstrated
+  one; pictorial assets resolve against a registry of open-licensed
+  libraries under an enforced licence gate; and type size is treated as a
+  hard constraint at the target column width.
 keywords:
+  - reference verification
+  - citation integrity
   - scientific illustration
   - graphical abstract
   - mechanism of action
@@ -23,5 +29,5 @@ keywords:
   - reproducible figures
   - open licensing
 license: MIT
-version: 0.7.0
+version: 0.8.0
 date-released: "2026-10-11"

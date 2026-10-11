@@ -1,7 +1,7 @@
 {
   "upload_type": "software",
   "title": "all-research-skills: research tooling skills",
-  "description": "<p>A collection of research tooling skills. The first, <strong>scientific-figures</strong>, compiles a declarative specification into journal-ready vector figures for scientific manuscripts: mechanisms of action, pathways, clinical algorithms, study designs and graphical abstracts.</p><p>Relations carry a mandatory evidence level rendered through a dedicated visual channel, so a proposed mechanism cannot be drawn as a demonstrated one. Pictorial assets resolve against a registry of open-licensed libraries under a licence gate enforced before rendering. Type size is treated as a hard constraint at the target column width. Output is deterministic vector drawing, with no generative image model at any stage.</p>",
+  "description": "Skills for preparing a scientific manuscript. bibliography-verification matches every reference against PubMed as written, catching fabricated and mis-cited entries and routing what PubMed cannot see to its own source. scientific-figures compiles a declarative specification into journal-ready vector figures, with a mandatory evidence level on every relation and an open-licence gate enforced at compile time.",
   "creators": [
     {
       "name": "Lucchesi, Alessandro",
@@ -11,9 +11,11 @@
   ],
   "license": "MIT",
   "access_right": "open",
-  "version": "v0.7.0",
+  "version": "v0.8.0",
   "language": "eng",
   "keywords": [
+    "citation integrity",
+    "reference verification",
     "scientific illustration",
     "graphical abstract",
     "mechanism of action",
