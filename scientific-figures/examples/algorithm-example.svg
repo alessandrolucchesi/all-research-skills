@@ -6,10 +6,10 @@
 <g transform="translate(293.0,232.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
 <path d="M293.0,272.0 L293.0,292.0 L150.4,292.0 L150.4,312.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
 <g transform="translate(150.4,326.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
-<text x="156.4" y="288.0" font-size="12.0" text-anchor="middle" fill="#8e8e8e">low</text>
+<text x="156.4" y="285.6" font-size="12.0" text-anchor="middle" fill="#8e8e8e">low</text>
 <path d="M293.0,272.0 L293.0,292.0 L448.4,292.0 L448.4,312.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
 <g transform="translate(448.4,326.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
-<text x="454.4" y="288.0" font-size="12.0" text-anchor="middle" fill="#8e8e8e">intermediate or high</text>
+<text x="454.4" y="308.0" font-size="12.0" text-anchor="middle" fill="#8e8e8e">intermediate or high</text>
 <path d="M448.4,366.0 L448.4,396.5 L293.0,396.5 L293.0,427.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
 <g transform="translate(293.0,441.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
 <path d="M293.0,481.0 L293.0,501.0 L293.0,501.0 L293.0,521.0" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>

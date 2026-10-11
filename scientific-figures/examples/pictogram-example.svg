@@ -16,7 +16,7 @@
 <g transform="translate(751.2,296.2) rotate(-0.9)"><path d="M-12,-6 L0,0 L-12,6" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linejoin="round" stroke-linecap="round"/></g>
 <path d="M295.9,68.0 L295.9,38.0 L873.2,38.0 L873.2,252.6" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-dasharray="2 5" stroke-linecap="round" stroke-linejoin="round"/>
 <g transform="translate(873.2,266.6) rotate(90.0)"><path d="M-12,-6 L0,0 L-12,6" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/></g>
-<text x="584.6" y="29.0" font-size="12.0" text-anchor="middle" fill="#1a1a1a">proposed direct contribution</text>
+<text x="584.6" y="26.6" font-size="12.0" text-anchor="middle" fill="#1a1a1a">proposed direct contribution</text>
 
 <g color="#6e6e6e"><g transform="translate(87.12,70.00) scale(0.8333)">
 <path d="M25.0001 14.3333C25.0001 14.7874 24.6299 15.441 23.4859 16.0402C22.3892 16.6147 20.8049 17 19.0001 17C17.1954 17 15.611 16.6147 14.5144 16.0402C13.3703 15.441 13.0001 14.7874 13.0001 14.3333C13.0001 13.9367 13.274 13.3911 14.1358 12.8445L13.0645 11.1555C11.9273 11.8769 11.0001 12.9571 11.0001 14.3333C11.0001 15.9043 12.1969 17.0841 13.5864 17.8119C15.0232 18.5645 16.9389 19 19.0001 19C21.0613 19 22.977 18.5645 24.4139 17.8119C25.8033 17.0841 27.0001 15.9043 27.0001 14.3333C27.0001 12.9571 26.073 11.8769 24.9357 11.1555L23.8645 12.8445C24.7263 13.3911 25.0001 13.9367 25.0001 14.3333Z" fill="currentColor"/>

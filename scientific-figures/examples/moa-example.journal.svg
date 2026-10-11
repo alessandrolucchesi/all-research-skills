@@ -19,7 +19,7 @@
 <g transform="translate(456.0,192.0) rotate(90.0)"><path d="M0,-9 L0,9" stroke="#0b6ea8" stroke-width="3.5" stroke-linecap="round"/></g>
 <path d="M1115.8,298.0 L1115.8,328.0 L282.0,328.0 L282.0,248.0" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-dasharray="2 5" stroke-linecap="round" stroke-linejoin="round"/>
 <g transform="translate(282.0,234.0) rotate(-90.0)"><path d="M-12,-6 L0,0 L-12,6" fill="none" stroke="#1a1a1a" stroke-width="2.0" stroke-linejoin="round" stroke-linecap="round"/></g>
-<text x="698.9" y="319.0" font-size="12.0" text-anchor="middle" fill="#1a1a1a">feedback</text>
+<text x="698.9" y="316.6" font-size="12.0" text-anchor="middle" fill="#1a1a1a">feedback</text>
 <rect x="60.0" y="68.0" width="96.0" height="40.0" rx="20.0" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
 <text x="108.0" y="93.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Ligand</text>
 <rect x="234.0" y="194.0" width="96.0" height="40.0" rx="9" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>

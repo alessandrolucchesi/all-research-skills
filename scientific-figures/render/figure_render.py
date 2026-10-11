@@ -1095,6 +1095,11 @@ def clear_lane(a, b, others, below=True, bounds=None):
     return lane, float("inf") if bounds else abs(lane - start)
 
 
+def boxes_overlap(p, q, pad=2.0):
+    return not (p[0] + p[2] + pad <= q[0] or q[0] + q[2] + pad <= p[0]
+                or p[1] + p[3] + pad <= q[1] or q[1] + q[3] + pad <= p[1])
+
+
 def clear_column(a, b, others, xbounds=None):
     """A vertical corridor joining two glyphs, for the case both horizontal
     lanes are walled in.
@@ -1406,6 +1411,9 @@ def render(spec, variant="journal"):
 
     # relations under the nodes
     obstacles_for, bounds_for = containment_router(nodes, rects, bands)
+    # Glyphs are placed first, so an arc label steps around them rather than
+    # printing over one, and around every label already set.
+    label_boxes = [(n.x, n.y, n.w, n.h) for n in nodes]
     for rel in spec.get("relations", []):
         a, b = by_id.get(rel["from"]), by_id.get(rel["to"])
         if not a or not b:
@@ -1425,6 +1433,7 @@ def render(spec, variant="journal"):
             stroke_w *= 0.6
 
         label_at = None
+        label_run = None
         x1, y1 = rect_edge(a, b.cx, b.cy)
         x2, y2 = rect_edge(b, a.cx, a.cy)
         ang = math.atan2(y2 - y1, x2 - x1)
@@ -1476,6 +1485,7 @@ def render(spec, variant="journal"):
                 d = (f"M{x1:.1f},{y1:.1f} L{cx:.1f},{y1:.1f} "
                      f"L{cx:.1f},{y2:.1f} L{ex:.1f},{y2:.1f}")
             label_at = (cx + 6.0, (y1 + y2) / 2.0 - 4.0)
+            label_run = "v"
         elif detour and detour[0] == "lane":
             # Feedback below, long forward arcs above, so the two stay
             # distinguishable. Both sides are costed and the shorter detour
@@ -1495,6 +1505,7 @@ def render(spec, variant="journal"):
             d = (f"M{x1:.1f},{y1:.1f} L{x1:.1f},{lane:.1f} "
                  f"L{x2:.1f},{lane:.1f} L{x2:.1f},{ey:.1f}")
             label_at = ((x1 + x2) / 2.0, lane - 9.0)
+            label_run = "h"
         elif kind == "flow":
             if vertical:
                 x1, y1 = a.cx, a.y + a.h
@@ -1531,9 +1542,70 @@ def render(spec, variant="journal"):
         if rel.get("label"):
             if vertical and kind == "flow" and not label_at:
                 label_at = (x2 + 6.0, (y1 + ey) / 2.0 - 4.0)
+                label_run = "v"
             lx, ly = label_at or ((x1 + ex) / 2.0, (y1 + ey) / 2.0 - 8.0)
-            out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="{font*0.8:.1f}" text-anchor="middle" '
-                       f'fill="{colour}">{esc(rel["label"])}</text>')
+            lf = font * 0.8
+            # A label belongs to the band it annotates and may not spill
+            # across the rule into the next phase, where it would read as
+            # that phase's text. Where the band is narrow the label wraps,
+            # which is what makes room; widening the band for a two-word
+            # annotation would distort the partition.
+            lim_lo, lim_hi = MARGIN * 0.4, width - MARGIN * 0.4
+            for bd in bands:
+                if bd["x"] <= lx <= bd["x"] + bd["w"]:
+                    lim_lo, lim_hi = bd["x"] + 5.0, bd["x"] + bd["w"] - 5.0
+                    break
+            llines = [rel["label"]]
+            run_v = (label_run or ("h" if abs(ex - x1) >= abs(ey - y1) else "v")) == "v"
+            if run_v and not label_at:
+                room = max(lim_hi - (lx + 9.0), (lx - 9.0) - lim_lo)
+                if text_width(rel["label"], lf) + 6.0 > room:
+                    llines = wrap_label(rel["label"], max(6, int(room / (lf * 0.54)))) \
+                        or [rel["label"]]
+            lw = max(text_width(l, lf) for l in llines) + 6.0
+            lh = lf * 1.2 * len(llines)
+            # Step the label off its own arc and off anything already placed.
+            # An arc label set on the line it annotates is the commonest way
+            # a schematic becomes unreadable at column width, and the figure
+            # has the room: the offset is a few points, not a redesign.
+            if run_v and not label_at:
+                # Beside a vertical run, not on it, on whichever side the
+                # band has room for it.
+                side = 1.0 if (lim_hi - (lx + 9.0)) >= ((lx - 9.0) - lim_lo) else -1.0
+                lx += side * (lw / 2.0 + 9.0)
+                ly += lh * 0.3
+            if run_v:
+                offs = [(0.0, 0.0), (lw + 12.0, 0.0), (-(lw + 12.0), 0.0),
+                        (0.0, -(lh + 8.0)), (0.0, lh + 8.0)]
+            else:
+                # Across the run first, then along it: an annotation may slide
+                # to a clear stretch of its own arc, which is what a drafter
+                # does, rather than sitting on the glyph it collides with.
+                step = lh + 4.0
+                offs = [(0.0, 0.0), (0.0, -step), (0.0, step),
+                        (0.0, -2 * step), (0.0, 2 * step)]
+                for f in (0.62, -0.62, 1.15, -1.15):
+                    offs.append((lw * f, 0.0))
+                    offs.append((lw * f, -step))
+                # Last resort, clear of the whole row of glyphs: in a dense
+                # rank there is no gap at the height of the arc, and a label
+                # printed over a glyph is worse than one lifted above it.
+                for d in (36.0, 54.0, 76.0):
+                    offs.append((0.0, -(lh + d)))
+                    offs.append((0.0, lh + d))
+            for ox, oy in offs:
+                bx, by = lx - lw / 2.0 + ox, ly - lh + oy
+                if bx < lim_lo or bx + lw > lim_hi:
+                    continue
+                if not any(boxes_overlap((bx, by, lw, lh), bb) for bb in label_boxes):
+                    lx, ly = lx + ox, ly + oy
+                    break
+            label_boxes.append((lx - lw / 2.0, ly - lh, lw, lh))
+            ty = ly - lh + lf
+            for ln in llines:
+                out.append(f'<text x="{lx:.1f}" y="{ty:.1f}" font-size="{lf:.1f}" '
+                           f'text-anchor="middle" fill="{colour}">{esc(ln)}</text>')
+                ty += lf * 1.2
 
     # Labels that moved out of their container: stacked beside it, each tied
     # to its glyph by a thin leader. The drawing keeps its size and shape and
