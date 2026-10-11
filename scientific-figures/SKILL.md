@@ -184,3 +184,4 @@ Every glyph is sized from one text-metrics function. The `process` class is the 
 - `examples/algorithm-example.yaml` — vertical clinical algorithm, PPTX output
 - `examples/anatomical-example.yaml` — containment, boundary slots, resolved anchors
 - `examples/phased-example.yaml` — a partition along an axis, three bands, a cross-phase relation
+- `examples/methylxanthine-example.yaml` — a worked figure outside haematology, with its abstract

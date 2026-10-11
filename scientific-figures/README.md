@@ -29,6 +29,8 @@ The figure above is compiled entirely from `examples/moa-example.yaml`, with no 
 
 Version 0.7, after two production runs and an analysis of four published exemplars. The renderer covers band B (mechanism of action, pathways, study designs, clinical algorithms). Band A, the standard-conformant reporting diagrams with their arithmetic validator, and band C, the journal-dimensioned canvas, are specified in `references/01-figure-taxonomy.md` but not yet implemented; the validator refuses a band A figure rather than improvising one.
 
+Also in 0.7, found by compiling a figure on an unfamiliar subject: a container whose silhouette cannot hold its contents, which is the normal case for an organ, is drawn as an emblem beside its name instead of disappearing into a labelled rectangle; the resolver stems plurals and variant numbers, so `kidney` reaches `kidneys` and `kidney-1`; a class generic can no longer score as the entity itself, nor be taken while a candidate that matched the entity's own name is available; `blood-cells` is no longer a generic for every cell, after it stood in for an osteoblast; a generalisation may drop a qualifier but never the head noun, after `B cell receptor` resolved to a drawing of a B cell; head-noun substitution is confined to neutral qualifiers, so a single-pass receptor is not drawn as a seven-helix one; two entities may share a glyph when it is a generic standing in for both, or when they are the same thing in two phases; and the validator refuses an unknown entity class rather than letting it fall through to `unspecified`, and refuses an unattributed hypothesis unless it is claimed as this work's.
+
 Also in 0.7: relation labels step around the glyphs and around each other. An annotation slides along its own arc to a clear stretch, lifts above the rank where a dense row leaves no gap at the height of the arc, and wraps rather than spilling across a phase rule into the band next door.
 
 New in 0.7: a phase partition. `meta.phases` divides the canvas into bands along one axis, each entity declaring which phase it occupies and each band laid out by the ordinary engines, so one phase can hold a containment scene and the next a flow. Three of the four published exemplars studied are built this way. The axis is named and given a direction only when it is ordered; routing is bounded by the partition, so a relation that crosses phases crosses the rule rather than escaping below the figure.
@@ -72,6 +74,7 @@ render/derive.py                      derived geometry and the derivative store
 render/style.py                       the colour budget under each purpose
 examples/anatomical-example.yaml      containment, boundary slots, anchors
 examples/phased-example.yaml          a partition along an axis, three bands
+examples/methylxanthine-example.yaml  a worked figure outside haematology
 render/figure_export.py               SVG, PNG and PPTX output
 examples/pictogram-example.yaml       resolved pictograms and generic substitution
 examples/algorithm-example.yaml       vertical clinical algorithm, PPTX output

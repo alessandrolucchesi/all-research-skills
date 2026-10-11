@@ -1,0 +1,180 @@
+# Graphical abstract for the methylxanthine osteopenia working abstract.
+# Written as a test of the skill on an unfamiliar subject: no haematology,
+# three converging arms, two cells of the remodelling unit drawn as cells,
+# and one relation that has to cross from one cell into the other.
+meta:
+  title: Methylxanthine exposure and the osteopenic phenotype
+  band: B
+  figure_class: mechanism_of_action
+  target: oa_cc_by
+  purpose: explanatory
+  layout: anatomical
+  claim: >-
+    Methylxanthine exposure lowers bone mineral density through three
+    converging routes, adenosine receptor antagonism, a cAMP-driven shift of
+    the osteoblast RANKL to osteoprotegerin ratio, and negative calcium
+    balance; the convergence is proposed, each link is cited.
+
+# Two regions, which is what the type-size floor allows at 178 mm: three
+# containers side by side are refused by the compiler, and it says so.
+compartments:
+  - id: systemic
+    label: Systemic exposure
+    type: conceptual
+  - id: bru
+    label: Bone remodelling unit
+    type: physical
+
+entities:
+  # the circulating drug, outside any cell
+  - id: mx
+    compartment: systemic
+    label: Methylxanthine
+    class: small_molecule
+    qualifier: caffeine, theophylline
+    identity: drug
+    prominence: high
+
+  # kidney: calcium wasting
+  - id: kidney
+    compartment: systemic
+    label: Kidney
+    class: organ
+    identity: kidney
+    contains: [calciuria]
+  - id: calciuria
+    label: Calcium excretion
+    class: process
+    qualifier: urinary losses rise
+
+  # parathyroid response
+  - id: pth
+    compartment: systemic
+    label: Parathyroid hormone
+    class: macromolecule
+    qualifier: secondary rise
+    identity: hormone
+
+  # osteoblast: the cAMP arm
+  - id: osteoblast
+    inside: bru
+    label: Osteoblast
+    class: cell
+    identity: osteoblast
+    # No library anywhere holds an osteoblast or an osteoclast, so the two
+    # are drawn with different generic cell bodies rather than with one
+    # glyph twice: the multinucleate body goes to the osteoclast, which is
+    # the one feature of it a reader can check.
+    anchor:
+      term: emptycell
+    contains: [a2a_ob, pde, camp, rankl_ratio]
+  - id: a2a_ob
+    label: Adenosine receptor
+    class: macromolecule
+    qualifier: A1 and A2A
+    slot: boundary
+    synonyms: [receptor, membrane receptor]
+  - id: pde
+    label: Phosphodiesterase
+    class: macromolecule
+    synonyms: [enzyme]
+  - id: camp
+    label: cAMP
+    class: small_molecule
+  - id: rankl_ratio
+    label: RANKL / OPG
+    class: measure
+    qualifier: ratio rises
+
+  # osteoclast: the effector
+  - id: osteoclast
+    inside: bru
+    label: Osteoclast
+    class: cell
+    identity: osteoclast
+    anchor:
+      term: cell-nuclei
+    contains: [rank, resorption]
+  - id: rank
+    label: RANK
+    class: macromolecule
+    slot: boundary
+    synonyms: [receptor membrane]
+  - id: resorption
+    label: Bone resorption
+    class: process
+
+  # the outcome
+  - id: bmd
+    inside: bru
+    label: Bone mineral density
+    class: measure
+    qualifier: reduced
+    prominence: high
+
+relations:
+  # arm 1, receptor antagonism
+  - from: mx
+    to: a2a_ob
+    type: inhibition
+    evidence: established
+    source: "Fredholm 1999"
+    label: receptor antagonism
+  - from: a2a_ob
+    to: camp
+    type: production
+    evidence: established
+    source: "Mediero 2013"
+
+  # arm 2, phosphodiesterase
+  - from: mx
+    to: pde
+    type: inhibition
+    evidence: established
+    source: "Essayan 2001"
+  - from: pde
+    to: camp
+    type: catalysis
+    evidence: established
+    source: "Essayan 2001"
+  - from: camp
+    to: rankl_ratio
+    type: stimulation
+    evidence: established
+    source: "Fu 2002"
+  - from: rankl_ratio
+    to: rank
+    type: binding
+    evidence: established
+    source: "Boyle 2003"
+    label: RANKL engages RANK
+  - from: rank
+    to: resorption
+    type: stimulation
+    evidence: established
+    source: "Boyle 2003"
+
+  # arm 3, calcium balance
+  - from: mx
+    to: calciuria
+    type: stimulation
+    evidence: established
+    source: "Massey 1993"
+  - from: calciuria
+    to: pth
+    type: production
+    evidence: established
+    source: "Barger-Lux 1995"
+  - from: pth
+    to: rankl_ratio
+    type: stimulation
+    evidence: established
+    source: "Ma 2001"
+
+  # the convergence, which is what the figure proposes
+  - from: resorption
+    to: bmd
+    type: inhibition
+    evidence: hypothesized
+    role: contribution
+    label: net skeletal loss

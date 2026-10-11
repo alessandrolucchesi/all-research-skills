@@ -257,6 +257,37 @@ def outline_points(outline):
     return pts
 
 
+def scale_path_fit(d, x, y, w, h):
+    """Place a path so that its own extent fills the rectangle.
+
+    `scale_path` maps the asset's whole bounding box, which is right when
+    the outline is drawn at the size the asset was measured at. It is wrong
+    for an emblem: an asset drawing two kidneys yields one contour, and
+    mapping the full box put a small kidney in the corner of the space it
+    was given rather than a kidney filling it.
+    """
+    pts = []
+    for token in d.replace("M", " ").replace("L", " ").replace("Z", " ").split():
+        try:
+            px, py = token.split(",")
+            pts.append((float(px), float(py)))
+        except ValueError:
+            continue
+    if not pts:
+        return d
+    x0 = min(p[0] for p in pts)
+    x1 = max(p[0] for p in pts)
+    y0 = min(p[1] for p in pts)
+    y1 = max(p[1] for p in pts)
+    sx = w / max(x1 - x0, 1e-6)
+    sy = h / max(y1 - y0, 1e-6)
+    s = min(sx, sy)
+    ox = x + (w - (x1 - x0) * s) / 2.0
+    oy = y + (h - (y1 - y0) * s) / 2.0
+    return ("M" + " L".join(f"{ox + (px - x0) * s:.1f},{oy + (py - y0) * s:.1f}"
+                            for px, py in pts) + " Z")
+
+
 def outline_edge(outline, u, window=0.08):
     """Normalised height of the silhouette's upper edge near normalised x=u.
 
@@ -267,8 +298,22 @@ def outline_edge(outline, u, window=0.08):
     outline puts it where the reader expects it, on the edge itself.
     """
     pts = outline_points(outline)
-    if not pts:
+    if len(pts) < 3:
         return None
+    # Where the outline crosses this vertical, interpolated along the
+    # segments. Reading the vertices alone fails on exactly the shapes this
+    # is for: a simplified contour spends its vertices on the corners, so a
+    # smooth upper edge can carry none at all, and the nearest vertex to the
+    # middle of a cell is as likely to be on the floor as on the ceiling.
+    # One receptor was placed at the bottom of the cell for that reason.
+    hits = []
+    for i in range(len(pts)):
+        (u0, v0), (u1, v1) = pts[i], pts[(i + 1) % len(pts)]
+        if (u0 - u) * (u1 - u) <= 0 and u0 != u1:
+            t = (u - u0) / (u1 - u0)
+            hits.append(v0 + t * (v1 - v0))
+    if hits:
+        return min(hits)
     near = [v for (uu, v) in pts if abs(uu - u) <= window]
     if not near:
         near = [v for (uu, v) in sorted(pts, key=lambda p: abs(p[0] - u))[:3]]

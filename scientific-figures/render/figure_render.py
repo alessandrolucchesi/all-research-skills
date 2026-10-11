@@ -223,6 +223,16 @@ def validate(spec, sources=None):
     comps = {c["id"]: c for c in spec.get("compartments", []) or []}
 
     for e in spec.get("entities", []):
+        if e.get("class") not in ONTOLOGY:
+            # Silence here is the dangerous outcome: an unknown class falls
+            # through to `unspecified`, which has its own meaning in the
+            # lexicon, so a receptor would be drawn as an entity whose
+            # nature the authors declined to state.
+            errors.append(
+                f"entity {e['id']}: unknown class '{e.get('class')}'. The ontology "
+                f"groups rather than excludes, so use the class that contains this "
+                f"one (a receptor is a macromolecule, a drug is a small_molecule). "
+                f"Known: {', '.join(sorted(ONTOLOGY))}")
         if e.get("compartment") and e["compartment"] not in comps:
             errors.append(f"entity {e['id']}: unknown compartment '{e['compartment']}'")
         holds = bool(e.get("contains")) or any(
@@ -249,7 +259,19 @@ def validate(spec, sources=None):
         ev = r.get("evidence")
         if ev not in DASH:
             errors.append(f"{tag}: missing or invalid evidence level")
-        elif ev != "demonstrated_here" and not r.get("source"):
+        elif ev == "hypothesized" and not r.get("source"):
+            # A conjecture of this work has no citation to give, and forcing
+            # one invites either a fabricated reference or a downgrade to
+            # `demonstrated_here`, which is the worse error of the two. It
+            # must be claimed instead: role `contribution` says whose
+            # hypothesis it is, which is what the reader needs.
+            if r.get("role") != "contribution":
+                errors.append(
+                    f"{tag}: a hypothesised relation needs either a source, if it is "
+                    f"someone else's conjecture, or role: contribution, if it is this "
+                    f"work's. An unattributed hypothesis is the thing this channel "
+                    f"exists to prevent.")
+        elif ev not in ("demonstrated_here", "hypothesized") and not r.get("source"):
             errors.append(f"{tag}: evidence '{ev}' requires a source")
 
     phases = meta.get("phases") or []
@@ -488,7 +510,11 @@ def layout_anatomical(spec, gutter=GUTTER, font=BASE_FONT):
         g = DERIVE.geometry_for(a, a["_svg"])
         if g:
             geoms[eid] = g
-    boxes = [SPATIAL.measure(r, ents, children, node_size, geoms) for r in roots]
+    def label_w(name):
+        return text_width(name.upper(), font * 0.78) + 18.0
+
+    boxes = [SPATIAL.measure(r, ents, children, node_size, geoms, 0, label_w)
+             for r in roots]
 
     x = MARGIN
     top = MARGIN + 28.0
@@ -519,6 +545,7 @@ def layout_anatomical(spec, gutter=GUTTER, font=BASE_FONT):
             type=cb.spec.get("_ctype", "physical"),
             label=cb.spec.get("label", cb.id),
             parent=cb.spec.get("_parent"),
+            header=cb.header,
             depth=0 if cb.spec.get("_parent") is None else 1,
             shape=container_shape_for(cls, cb.geometry),
             has_boundary=any(c.slot == "boundary" for c in cb.children),
@@ -890,7 +917,12 @@ def resolve_spec_assets(spec, strict=False):
         prefer = ("Cell_membrane", "Tissues") if e["id"] in contains else ()
         acc, cand, terms = AR0.resolve(term, target=target, cls=e.get("class"),
                                        prefer_categories=prefer)
-        if e["id"] in contains and not acc:
+        # The empty-cell fallback is for things that are cells. Applied to an
+        # organ it drew a kidney as a cell membrane, which is not a
+        # simplification of a kidney but a different claim about what the
+        # reader is looking at.
+        if (e["id"] in contains and not acc
+                and e.get("class") in ("cell", "cell_population", "organelle", "complex")):
             acc, cand2, t2 = AR0.resolve("empty cell membrane", target=target,
                                          cls=e.get("class"),
                                          prefer_categories=("Cell_membrane",))
@@ -908,7 +940,8 @@ def resolve_spec_assets(spec, strict=False):
         else:
             e.pop("anchor", None)
     prov = spec.setdefault("provenance", {}).setdefault("assets", [])
-    used_assets = {}    # asset_id -> (entity id, score)
+    used_assets = {}    # asset_id -> (entity id, score, was a generic)
+    phase_of = {en["id"]: en.get("phase") for en in spec.get("entities", [])}
     prefer = None       # once one family is used, prefer it: mixing a flat
                         # pictogram set with a detailed illustration set reads
                         # as two figures spliced together
@@ -935,9 +968,19 @@ def resolve_spec_assets(spec, strict=False):
             e.get("label", e["id"]), target=target,
             synonyms=e.get("synonyms"), cls=e.get("class"),
             prefer_source=prefer)
-        if (accepted and accepted[0]["asset_id"] in used_assets
-                and not accepted[0].get("adaptations")):
-            prev_id, prev_score = used_assets[accepted[0]["asset_id"]]
+        # Two entities may share a glyph when it is a generic standing in for
+        # both: an adenosine receptor and RANK are both receptors, and the
+        # library's plain membrane receptor says nothing false about either,
+        # with the label carrying the identity. The rule is against two
+        # entities sharing a glyph that names one of them.
+        prev = used_assets.get(accepted[0]["asset_id"]) if accepted else None
+        # Across phases the rule is inverted. A partition draws a persisting
+        # thing once in each band, and those are the same thing: giving the
+        # second one a different glyph would say they are not.
+        if prev and phase_of.get(e["id"]) != phase_of.get(prev[0]):
+            prev = None
+        if (prev and not accepted[0].get("adaptations") and not prev[2]):
+            prev_id, prev_score, _ = prev
             if accepted[0]["score"] <= prev_score:
                 msgs.append(
                     f"error: entity {e['id']}: would reuse the asset already given to "
@@ -952,10 +995,14 @@ def resolve_spec_assets(spec, strict=False):
                 for ent in spec["entities"]:
                     if ent["id"] == prev_id:
                         ent.pop("asset", None)
+                        # and the flag that says it has a drawing, or the
+                        # entity is rendered as a box claiming to be one
+                        ent.pop("_depicted", None)
                 prov[:] = [a for a in prov if a.get("asset_id") != accepted[0]["asset_id"]]
         if accepted:
             a = accepted[0]
-            used_assets[a["asset_id"]] = (e["id"], a["score"])
+            used_assets[a["asset_id"]] = (e["id"], a["score"],
+                                          bool(a.get("adaptations")))
             if depict_all:
                 e["_depicted"] = True
             e["asset"] = a
@@ -1062,6 +1109,16 @@ def containment_router(nodes, rects, bands=None):
                     max(bd["y"] + bd["h"] for bd in bands) - 8.0,
                     min(bd["x"] for bd in bands) + 8.0,
                     max(bd["x"] + bd["w"] for bd in bands) - 8.0)
+        if rects:
+            # Nothing contains both ends, which happens whenever a relation
+            # runs between two regions. The figure itself is still the
+            # bound: left free, one such arc dropped a third of a canvas
+            # below everything drawn and came back up.
+            ys = [r["y"] for r in rects.values()] + [n.y for n in nodes]
+            yd = [r["y"] + r["h"] for r in rects.values()] + [n.y + n.h for n in nodes]
+            xs = [r["x"] for r in rects.values()] + [n.x for n in nodes]
+            xd = [r["x"] + r["w"] for r in rects.values()] + [n.x + n.w for n in nodes]
+            return (min(ys) - 26.0, max(yd) + 26.0, min(xs) - 26.0, max(xd) + 26.0)
         return None
 
     return obstacles_for, bounds_for
@@ -1368,6 +1425,27 @@ def render(spec, variant="journal"):
                                        r["w"], r["h"],
                                        "frm" + re.sub(r"[^A-Za-z0-9]", "", cid))
                            + '</g>')
+            elif outline and r.get("header", 0) > 24:
+                # The silhouette cannot hold the contents, which is the
+                # normal case for an organ: a kidney measures thirteen per
+                # cent usable middle, a liver nineteen. It is drawn as an
+                # emblem beside the label, at full strength, rather than
+                # dropped, which left the organ as a labelled rectangle and
+                # put the anatomy back in the caption.
+                eh = r["header"] - 10.0
+                ew = max(eh, min(eh * (geo.get("natural_aspect") or 1.0), eh * 1.9))
+                # The asset itself, not its trace. The trace exists so that
+                # contents can sit in the lumen; an emblem needs none of
+                # that, and a contour of a drawing with internal detail is
+                # not reliably the organ's own outline.
+                # Top right, so the label keeps the corner it always has and
+                # a long container name is not pushed off its own box.
+                out.append(f'<g color="{INK}">'
+                           + embed_svg(desaturate_svg(anc["_svg"]),
+                                       r["x"] + r["w"] - ew - 12.0, r["y"] + 5.0,
+                                       ew, eh,
+                                       "emb" + re.sub(r"[^A-Za-z0-9]", "", cid))
+                           + '</g>')
             elif anc.get("_svg") and (anc.get("style") == "wash"):
                 # Only on request. A faint silhouette behind the contents
                 # reads as an ornament on the background rather than as the
@@ -1396,7 +1474,9 @@ def render(spec, variant="journal"):
                                f'font-size="{font*0.78:.1f}" text-anchor="middle" '
                                f'fill="{LABEL_MUTED}" letter-spacing="0.6">{esc(r["label"].upper())}</text>')
             else:
-                out.append(f'<text x="{r["x"]+16:.1f}" y="{r["y"]+20:.1f}" font-size="{font*0.78:.1f}" '
+                ly0 = r["y"] + (r.get("header", 20.0) / 2.0 + 4.0
+                                if r.get("header", 20.0) > 24 else 20.0)
+                out.append(f'<text x="{r["x"]+16:.1f}" y="{ly0:.1f}" font-size="{font*0.78:.1f}" '
                            f'fill="{LABEL_MUTED}" letter-spacing="0.6">{esc(r["label"].upper())}</text>')
             continue
         if r["type"] == "physical":
@@ -1644,20 +1724,47 @@ def render(spec, variant="journal"):
         if not r:
             continue
         lx = r["x"] + r["w"] + 16.0
-        ly = r["y"] + 26.0
+        ly = r["y"] + max(26.0, r.get("header", 20.0) + 12.0)
+        # Whichever side has the room. A container near the right edge of
+        # its region had its labels printed across the boundary and over the
+        # arcs beyond it.
+        need = max([text_width(n.label, font * 0.92) for n in group] + [0.0])
+        # The room that counts is the room inside whatever holds this
+        # container, not the width of the canvas: a label that clears the
+        # page edge can still be printed straight across its own region's
+        # boundary and over whatever lies beyond it.
+        pr = rects.get(r.get("parent"))
+        rlim = (pr["x"] + pr["w"] - 8.0) if pr else (width - MARGIN)
+        llim = (pr["x"] + 8.0) if pr else MARGIN
+        anchor = "start"
+        if lx + need > rlim and (r["x"] - 16.0 - need) > llim:
+            lx, anchor = r["x"] - 16.0, "end"
+        tip = (lx + 6.0) if anchor == "end" else (lx - 6.0)
         for n in sorted(group, key=lambda m: m.y):
             colour, _ = pal.entity(n.spec, n.role)
-            out.append(f'<path d="M{n.cx:.1f},{n.cy:.1f} L{lx-6:.1f},{ly-4:.1f}" '
+            # Step down past whatever is already on the page. Flipping to
+            # the side with room is no use if the label lands on a glyph
+            # that happens to be sitting there.
+            bw_ = text_width(n.label, font * 0.92)
+            bx_ = (lx - bw_) if anchor == "end" else lx
+            for _ in range(7):
+                if not any(boxes_overlap((bx_, ly - font, bw_, font * 1.2), bb)
+                           for bb in label_boxes):
+                    break
+                ly += font * 1.25
+            label_boxes.append((bx_, ly - font, bw_, font * 1.2))
+            out.append(f'<path d="M{n.cx:.1f},{n.cy:.1f} L{tip:.1f},{ly-4:.1f}" '
                        f'fill="none" stroke="{CANONICAL}" stroke-width="{sw*0.55:.1f}"/>')
             out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="{font*0.92:.1f}" '
-                       f'fill="{INK}">{esc(n.label)}</text>')
+                       f'text-anchor="{anchor}" fill="{INK}">{esc(n.label)}</text>')
             ly += font * 1.15
             if n.spec.get("qualifier"):
                 out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="{font*0.74:.1f}" '
-                           f'fill="#6b7780">{esc(n.spec["qualifier"])}</text>')
+                           f'text-anchor="{anchor}" fill="#6b7780">{esc(n.spec["qualifier"])}</text>')
                 ly += font * 1.05
             ly += font * 0.5
-            width = max(width, lx + text_width(n.label, font * 0.92) + MARGIN)
+            if anchor == "start":
+                width = max(width, lx + need + MARGIN)
 
     # entities
     for n in nodes:

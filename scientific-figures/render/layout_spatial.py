@@ -60,6 +60,12 @@ LEVEL_SCALE = {0: 1.0, 1: 1.25, 2: 1.6, 3: 1.9, 4: 2.2, 5: 2.4}
 PAD = 22.0          # inside a container, around its contents
 GAP = 26.0          # between siblings
 HEADER = 20.0       # room for the container's own label
+# A container whose drawing cannot hold its contents still has to be shown,
+# or an organ disappears into a labelled rectangle. The silhouette is drawn
+# at full strength as an emblem beside the label, and the header grows to
+# make room for it. Lobed and thin organs are the normal case here: a kidney
+# measures thirteen per cent usable middle, a liver nineteen.
+EMBLEM_HEADER = 46.0
 TOP_CLEAR = 22.0    # room above a container for a label set outside it
 BOUNDARY_INSET = 0.5   # fraction of a boundary glyph that sits outside the edge
 
@@ -153,13 +159,15 @@ LABEL_STEPS = ("full", "no_qualifier", "outside")
 class Box:
     """A laid-out entity: leaf or container."""
     __slots__ = ("id", "spec", "x", "y", "w", "h", "children", "is_container",
-                 "slot", "geometry", "content", "rank", "label_mode", "pad_top")
+                 "slot", "geometry", "content", "rank", "label_mode", "pad_top",
+                 "header")
 
     def __init__(self, eid, espec):
         self.id = eid
         self.spec = espec
         self.label_mode = "full"
         self.pad_top = 0.0
+        self.header = HEADER
         self.x = self.y = 0.0
         self.w = self.h = 0.0
         self.children = []
@@ -216,7 +224,7 @@ def _rows_extent(rows):
     return w, h
 
 
-def measure(bid, ents, children, node_size, geoms=None, depth=0):
+def measure(bid, ents, children, node_size, geoms=None, depth=0, label_w=None):
     """Bottom-up sizing: a leaf from its label and scale, a container from its
     contents, never smaller than its own scale demands."""
     e = ents[bid]
@@ -231,7 +239,8 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0):
         return b
 
     b.is_container = True
-    inner = [measure(k, ents, children, node_size, geoms, depth + 1) for k in kids]
+    inner = [measure(k, ents, children, node_size, geoms, depth + 1, label_w)
+             for k in kids]
     b.children = inner
     interior = [c for c in inner if c.slot != "boundary"]
     boundary = [c for c in inner if c.slot == "boundary"]
@@ -257,6 +266,10 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0):
     g0 = (geoms or {}).get(bid) or {}
     drawn0 = (g0.get("kind") == "frame"
               or (g0.get("outline") and g0.get("inscribed_fraction", 0) >= 0.26))
+    # Not drawable as a container, but it has a silhouette: it becomes an
+    # emblem in the header, and the header grows to hold it.
+    if g0.get("outline") and not drawn0:
+        b.header = EMBLEM_HEADER
     nat0 = g0.get("natural_aspect") if drawn0 else None
     def _fit(mode):
         for c in interior:
@@ -271,7 +284,7 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0):
     b.content = (0.0, 0.0, cw, chh)
 
     def _needed(cw_, chh_):
-        bw_, bh_ = cw_ + 2 * PAD, chh_ + 2 * PAD + HEADER
+        bw_, bh_ = cw_ + 2 * PAD, chh_ + 2 * PAD + b.header
         if boundary:
             bw_ = max(bw_, sum(c.w + GAP for c in boundary) - GAP + 2 * PAD)
         return bw_, bh_
@@ -292,7 +305,7 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0):
     cw, chh = _rows_extent(_rows_of(interior, nat0))
 
     bw = cw + 2 * PAD
-    bh = chh + 2 * PAD + HEADER
+    bh = chh + 2 * PAD + b.header
     region = None
     if b.geometry and b.geometry.get("kind") == "frame":
         region = b.geometry.get("frame_rect")
@@ -326,6 +339,13 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0):
                                   inscribed_fraction=0.0, _demoted=True)
     if boundary:
         bw = max(bw, sum(c.w + GAP for c in boundary) - GAP + 2 * PAD)
+    if b.header > HEADER:
+        # The header carries an emblem beside the name, so the box has to be
+        # wide enough for both. Sized from the contents alone, a narrow
+        # container printed its drawing straight over its own label.
+        name = e.get("label", bid)
+        bw = max(bw, 2 * PAD + (b.header - 10.0) * 1.9 + 14.0
+                 + (label_w(name) if label_w else 7.4 * len(name)))
     b.w, b.h = bw, bh
     return b
 
@@ -345,8 +365,8 @@ def place(b, x, y):
     rows = _rows_of(interior, g.get("natural_aspect") if drawn else None)
     cw, ch = _rows_extent(rows)
 
-    avail_y = y + HEADER
-    avail_h = b.h - HEADER
+    avail_y = y + b.header
+    avail_h = b.h - b.header
     region = None
     if b.geometry and b.geometry.get("kind") == "frame":
         region = b.geometry.get("frame_rect")

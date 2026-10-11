@@ -86,6 +86,22 @@ SYNONYMS = {
 # Synonyms above are therefore identity preserving only: they widen the search,
 # never the meaning.
 AUTO_ACCEPT = 96
+# A class generic can never score as the entity itself: capped below the
+# auto-accept line so it always travels the substitution path, where the
+# adaptation is recorded and the credit line says what was swapped in.
+GENERIC_CAP = 80
+
+# Words a library adds to a head noun that do not change what the drawing
+# denotes. Everything else does: "calciumsensing-receptor" is a different
+# protein and "7helix-receptor" is a different structural class, and either
+# one standing in for an unqualified receptor is a claim about the protein
+# rather than a simplification of it. Head-noun generalisation is allowed
+# only across this list.
+NEUTRAL_QUALIFIERS = {
+    "simple", "generic", "basic", "plain", "standard", "general",
+    "membrane", "transmembrane", "surface", "bound",
+    "schematic", "outline", "empty", "filled", "icon", "symbol", "shape",
+}
 
 # Catalogue categories that can never depict a biological or clinical entity.
 # "B cell" resolved to typography/B.svg, a drawing of the letter B, because
@@ -231,6 +247,33 @@ def _norm(s):
     return re.sub(r"[^a-z0-9]+", " ", str(s).lower()).strip()
 
 
+def _neutral_extras(cand_words, term_words):
+    """True when everything the candidate adds to the query is a word that
+    does not change what is denoted."""
+    extras = [w for w in cand_words if w not in term_words]
+    return all(w in NEUTRAL_QUALIFIERS for w in extras)
+
+
+def _stem(n):
+    """Fold the two differences that are spelling, not meaning.
+
+    Libraries name a file for the drawing, not for the query: Health Icons
+    has `kidneys` and Servier has `kidney-1`, `kidney-2`, so an exact test
+    on "kidney" found neither and the container fell back to a cell
+    membrane, drawing an organ as a cell. A trailing variant number and a
+    plural are dropped; a short word keeps its s, so `ras` is not stemmed
+    to `ra`.
+    """
+    out = []
+    for w in n.split():
+        if w.isdigit():
+            continue
+        if len(w) >= 5 and w.endswith("s") and not w.endswith("ss"):
+            w = w[:-1]
+        out.append(w)
+    return " ".join(out)
+
+
 def search_terms(label, synonyms=None, cls=None):
     terms = [label] + list(synonyms or [])
     key = _norm(label)
@@ -253,19 +296,22 @@ def score(hit, term):
     title = _norm(hit.get("title", ""))
     cat = _norm(hit["category"])
     tags = [_norm(t) for t in hit.get("tags", [])]
-    tw = term.split()
+    term_s = _stem(term)
+    tw = term_s.split()
     best = 0
-    for cand, weight in ((name, 0), (title, -4)):
-        if not cand:
+    for cand0, weight in ((name, 0), (title, -4)):
+        if not cand0:
             continue
+        cand = _stem(cand0)
         cw = cand.split()
-        if cand == term:
+        if cand == term_s:
             best = max(best, 100 + weight)
         elif all(w in cw for w in tw):
             best = max(best, 82 + weight)
-        elif len(term) >= 4 and term in cand:
+        elif len(term_s) >= 4 and term_s in cand:
             best = max(best, 58 + weight)
-        elif tw and cw and tw[-1] in cw and len(tw) > 1:
+        elif (tw and cw and tw[-1] in cw and len(tw) > 1
+              and _neutral_extras(cw, tw)):
             # Head-noun generalisation. "Fc receptor" IS a kind of receptor,
             # so an asset whose name contains the query's head noun denotes
             # something more general, which the label then specialises. This
@@ -273,27 +319,36 @@ def score(hit, term):
             # it reaches "receptor-3helix-membrane" for "Fc receptor" and
             # still refuses a basophil for a neutrophil, whose head noun is
             # the whole word and appears nowhere in the basophil's name.
-            best = max(best, 86 + weight)
-        elif cw and set(cw).issubset(set(tw)):
+            # Penalised by how much the candidate adds. A library names an
+            # asset for the structure it drew, so "7helix-receptor-membrane"
+            # is a GPCR and standing it in for a single-pass receptor is a
+            # claim about the protein, not a simplification. The plainest
+            # candidate carrying the head noun wins.
+            best = max(best, 86 + weight - 2 * max(0, len(cw) - len(tw)))
+        elif cw and set(cw).issubset(set(tw)) and tw and tw[-1] in cw:
             # The candidate drops a qualifier from the query: "megakaryocyte"
             # against "clonal megakaryocyte". This is the most useful match
             # there is and it must outrank a class-level generic, which is
             # what sent two different entities to one blood-cells glyph.
+            # The head noun has to survive: dropping it is not dropping a
+            # qualifier but naming something else, and "B cell receptor"
+            # minus "receptor" is a B cell, which is what one figure drew
+            # in place of the receptor on its surface.
             best = max(best, 92 + weight)
-        elif len(cand) >= 4 and cand in term:
+        elif len(cand) >= 4 and cand in term_s:
             # Containment scored by how much of the query the candidate
             # covers. "antibody" covers two thirds of "autoantibody" and is
             # a real generalisation; "body" covers a third and is an
             # orthographic coincidence that once resolved an autoantibody to
             # a drawing of a human body.
-            ratio = len(cand) / max(len(term), 1)
+            ratio = len(cand) / max(len(term_s), 1)
             best = max(best, 38 + int(34 * ratio) + weight)
     for t in tags:
-        if t == term:
+        if _stem(t) == term_s:
             best = max(best, 76)
-        elif len(term) >= 4 and term in t:
+        elif len(term_s) >= 4 and term_s in _stem(t):
             best = max(best, 50)
-    if cat and (term == cat or (len(term) >= 4 and term in cat)):
+    if cat and (term_s == _stem(cat) or (len(term_s) >= 4 and term_s in _stem(cat))):
         best = max(best, 20)
     return best
 
@@ -303,13 +358,20 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             prefer_source=None, prefer_categories=()):
     gate = load_gate(target)
     cats = catalogues if catalogues is not None else (healthicons_catalogue() + bioicons_catalogue())
-    terms = search_terms(label, synonyms, cls)
+    own = search_terms(label, synonyms, None)
     # The class's generic forms are searched too, so an entity with no exact
     # icon still reaches a legitimate, more general one instead of falling
-    # back to a bare box.
-    for g in generic_terms(cls or ""):
-        if _norm(g) not in terms:
-            terms.append(_norm(g))
+    # back to a bare box. They are kept apart from the entity's own terms and
+    # capped: a drawing called "cell" is an exact match for the word "cell"
+    # and nothing at all like an exact match for an osteoblast, and scoring
+    # it as one let a generic enter as though it were the entity itself,
+    # silently and with no substitution recorded.
+    gen = []
+    for g in ([cls] if cls else []) + list(generic_terms(cls or "")):
+        n = _norm(g)
+        if n and n not in own and n not in gen:
+            gen.append(n)
+    terms = own + gen
 
     ranked = []
     for hit in cats:
@@ -317,7 +379,11 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             continue
         if len(_norm(hit["name"]).replace(" ", "")) < MIN_NAME_CHARS:
             continue
-        best = max((score(hit, t) for t in terms), default=0)
+        own_best = max((score(hit, t) for t in own), default=0)
+        best = own_best
+        if gen:
+            best = max(best, min(max((score(hit, t) for t in gen), default=0),
+                                 GENERIC_CAP))
         if best:
             # Health Icons first on equal merit: CC0 means no composite-level
             # attribution bookkeeping. Servier, mirrored in Bioicons, is
@@ -328,15 +394,19 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             bonus = 2 if hit["source_id"] == "health-icons" else (2 if hit.get("author") == "Servier" else 0)
             if prefer_source and hit["source_id"] == prefer_source:
                 bonus += 1
-            if prefer_categories and hit.get("category") in prefer_categories:
-                # A container wants a drawn empty cell, not a solid one, and
-                # the library keeps those in their own category.
-                bonus += 14
-            ranked.append((best + bonus, hit))
-    ranked.sort(key=lambda r: -r[0])
+            # A container wants a drawn empty cell rather than a solid one,
+            # and the library keeps those in their own category. It breaks a
+            # tie and nothing more: as a score it was outweighing an exact
+            # match on the asked-for name, which is the one thing no
+            # preference should be able to do.
+            pref = 1 if (prefer_categories
+                         and hit.get("category") in prefer_categories) else 0
+            ranked.append((best + bonus, pref, own_best, hit))
+    ranked.sort(key=lambda r: (-r[0], -r[1]))
+
 
     accepted, candidates, rejected = [], [], []
-    for sc, hit in ranked[:60]:
+    for sc, _pref, own_sc, hit in ranked[:60]:
         ok, why = licence_allowed(hit["license"], gate)
         if not ok:
             rejected.append((hit, f"licence {hit['license']}: {why}"))
@@ -355,23 +425,31 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
         # of the query drops qualifiers and may stand in, with the label
         # carrying the identity. A candidate that adds a word is more specific
         # or a sibling and is never taken automatically.
-        cand_words = _norm(hit["name"]).split()
-        cand_norm = _norm(hit["name"])
+        cand_norm = _stem(_norm(hit["name"]))
+        cand_words = cand_norm.split()
 
         def _more_general(t):
+            t = _stem(t)
             tw = t.split()
-            if is_generalisation(cand_words, tw):
+            if is_generalisation(cand_words, tw) and tw and tw[-1] in cand_words:
                 return True
-            # head noun: "Fc receptor" is a kind of receptor
-            if len(tw) > 1 and tw[-1] in cand_words:
+            # head noun: "Fc receptor" is a kind of receptor, but only
+            # where what the candidate adds does not name something else.
+            if (len(tw) > 1 and tw[-1] in cand_words
+                    and _neutral_extras(cand_words, tw)):
                 return True
             # contained word: "antibody" is more general than "autoantibody",
             # but only when it covers enough of it to be the same noun.
             return (len(cand_norm) >= 4 and cand_norm in t
                     and len(cand_norm) / max(len(t), 1) >= 0.5)
 
-        generalises = (any(_more_general(t) for t in terms)
-                       or hit["name"].lower() in generic_assets(cls or ""))
+        # Judged against what the entity actually is. Run over the class
+        # generics as well, every candidate matching "cell" counted as a
+        # generalisation of every cell, which is how a drawing of blood
+        # cells came to stand for an osteoblast.
+        generalises = (any(_more_general(t) for t in own)
+                       or _stem(_norm(hit["name"])) in
+                       [_stem(_norm(g)) for g in generic_assets(cls or "")])
         adapt = []
         if sc < auto_accept and generalises:
             adapt.append("generic substitute for the labelled entity")
@@ -380,8 +458,17 @@ def resolve(label, target="oa_cc_by", synonyms=None, cls=None, catalogues=None,
             "author": hit["author"], "license": hit["license"],
             "url": raw_url(hit), "adaptations": adapt,
             "attribution": attribution(hit, adapt),
-            "vector": True, "score": sc, "svg": svg,
+            "vector": True, "score": sc, "own_score": own_sc, "svg": svg,
         }
+        # A class generic must not be taken while something that matched the
+        # entity's own name is on the table. Ranking puts the better match
+        # first, so by now it is already in `candidates`: a drawing of cell
+        # nuclei was being accepted for a neutrophil while the library's own
+        # neutrophil sat in the candidate list, unreported. Judged against
+        # what passed the gates, not against the raw ranking, where the
+        # better match may have been refused for its licence.
+        if adapt and any(c.get("own_score", 0) > own_sc for c in candidates):
+            adapt = []
         if sc >= auto_accept or adapt:
             accepted.append(record)
         else:

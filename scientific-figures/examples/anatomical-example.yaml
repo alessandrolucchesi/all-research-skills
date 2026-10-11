@@ -66,6 +66,7 @@ entities:
   - id: platelet
     label: "Platelet"
     class: cell
+    synonyms: [blood cells]
 
   - id: autoab
     label: "Autoantibody"

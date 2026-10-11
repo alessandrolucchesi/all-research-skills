@@ -40,15 +40,20 @@ ONTOLOGY = {
     # cellular and structural ---------------------------------------------
     "organelle":      dict(family="cellular", depiction="pictogram",
                            generic=["organelle", "vesicle", "mitochondrion"]),
+    # "blood-cells" was on these lists and is not a generic cell: it is a
+    # drawing of erythrocytes and platelets. It stood in for an osteoblast,
+    # which is a false statement about the cell, not a simplification of it.
+    # A generic must be a shape that asserts nothing beyond the class.
     "cell":           dict(family="cellular", depiction="pictogram",
                            generic=["cell", "cells"],
-                           generic_assets=["blood-cells", "cell", "cells", "cell-nuclei"]),
+                           generic_assets=["cell", "cells", "emptycell",
+                                           "animal-cell", "cell-nuclei"]),
     "cell_population": dict(family="cellular", depiction="pictogram",
                             generic=["cells", "colony"],
-                            generic_assets=["blood-cells", "cells", "cell"]),
+                            generic_assets=["cells", "cell", "emptycell"]),
     "tissue":         dict(family="cellular", depiction="pictogram",
                            generic=["tissue", "epithelium"],
-                           generic_assets=["tissue", "epithelium", "blood-cells"]),
+                           generic_assets=["tissue", "epithelium"]),
     "organ":          dict(family="cellular", depiction="pictogram",
                            generic=["organ", "anatomy"], generic_assets=["organ"]),
     "organism":       dict(family="cellular", depiction="pictogram",

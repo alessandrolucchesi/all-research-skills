@@ -28,6 +28,7 @@ entities:
     label: "Platelet"
     qualifier: "GP IIb/IIIa bearing"
     class: cell
+    synonyms: [blood cells]
     compartment: spleen
 
   - id: autoab

@@ -31,6 +31,7 @@ entities:
     class: cell
     phase: steady
     identity: platelet
+    synonyms: [blood cells]
   - id: mac
     label: Macrophage
     class: cell
@@ -49,9 +50,10 @@ entities:
     class: cell
     phase: autoimmune
     identity: platelet
+    synonyms: [blood cells]
   - id: fcr
     label: Fc receptor
-    class: receptor
+    class: macromolecule
     phase: autoimmune
   - id: phago
     label: Phagocytosis
@@ -60,7 +62,7 @@ entities:
 
   - id: fosta
     label: Fostamatinib
-    class: drug
+    class: small_molecule
     qualifier: R406, active metabolite
     phase: treated
   - id: syk
