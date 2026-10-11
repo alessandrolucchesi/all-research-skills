@@ -37,6 +37,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 
+import derive as DERIVE  # noqa: E402
 from ontology import ONTOLOGY  # noqa: E402
 
 # Scale ladder. A container's level must exceed its children's.
@@ -67,7 +68,10 @@ BOUNDARY_INSET = 0.5   # fraction of a boundary glyph that sits outside the edge
 # cent costs 3.3x in each direction. Nested containers multiply those factors,
 # which once blew a figure up until the type was unreadable. Past this cap the
 # drawing goes behind the contents instead, which costs nothing.
-MAX_FRAME_GROWTH = 1.7
+# An outlined container is meant to be large: that is the point of drawing
+# the cell rather than a box. The cap only stops the compounding that once
+# blew a nested figure past legibility.
+MAX_FRAME_GROWTH = 2.6
 
 
 def level_of(cls):
@@ -138,14 +142,24 @@ def validate_scale(ents, children):
     return errors
 
 
+# When a container cannot hold its children's labels without growing past the
+# cap, the labels move out rather than the drawing growing or deforming. This
+# is what published figures do: inside a cell the molecular glyphs are small
+# and short-named, and the explanatory text sits outside with a leader. Two
+# steps, the gentler one first.
+LABEL_STEPS = ("full", "no_qualifier", "outside")
+
+
 class Box:
     """A laid-out entity: leaf or container."""
     __slots__ = ("id", "spec", "x", "y", "w", "h", "children", "is_container",
-                 "slot", "geometry", "content", "rank")
+                 "slot", "geometry", "content", "rank", "label_mode", "pad_top")
 
     def __init__(self, eid, espec):
         self.id = eid
         self.spec = espec
+        self.label_mode = "full"
+        self.pad_top = 0.0
         self.x = self.y = 0.0
         self.w = self.h = 0.0
         self.children = []
@@ -156,33 +170,49 @@ class Box:
         self.rank = 0
 
 
-def _rows_of(interior):
-    """Break the interior children into rows. Called by both passes, because
-    computing it twice is how children came to overflow their container."""
-    import math
+def _rows_of(interior, target_aspect=None):
+    """Break the interior children into rows.
+
+    Called by both passes, because computing it twice is how children once
+    came to overflow their container. The break follows the container's own
+    proportion when it has one: a wide row of contents inside a nearly square
+    cell forces the cell to grow six-fold to keep its shape, and a cell
+    stretched to fit the row instead is a deformed drawing.
+    """
     if not interior:
         return []
     n = len(interior)
-    tallest = max(c.h for c in interior)
-    total = sum(c.w + GAP for c in interior) - GAP
-    per_row = max(1, int(math.ceil(math.sqrt(n * (total / n) / max(tallest, 1.0)))))
-    per_row = min(per_row, n)
-    rows, cur = [], []
-    for c in interior:
-        cur.append(c)
-        if len(cur) >= per_row:
+    best, best_cost = None, None
+    for per_row in range(1, n + 1):
+        rows, cur = [], []
+        for c in interior:
+            cur.append(c)
+            if len(cur) >= per_row:
+                rows.append(cur)
+                cur = []
+        if cur:
             rows.append(cur)
-            cur = []
-    if cur:
-        rows.append(cur)
-    return rows
+        w, h = _rows_extent(rows)
+        if target_aspect and target_aspect > 0:
+            cost = abs((w / max(h, 1.0)) / target_aspect - 1.0)
+        else:
+            cost = abs(w / max(h, 1.0) - 1.6)      # a readable default block
+        if best_cost is None or cost < best_cost:
+            best, best_cost = rows, cost
+    return best
+
+
+def _row_h(r):
+    """A row is as tall as its tallest child plus whatever that child reserves
+    above itself, which is where a container's boundary labels live."""
+    return max(c.h + c.pad_top for c in r)
 
 
 def _rows_extent(rows):
     if not rows:
         return 120.0, 60.0
     w = max(sum(c.w for c in r) + GAP * (len(r) - 1) for r in rows)
-    h = sum(max(c.h for c in r) for r in rows) + GAP * (len(rows) - 1)
+    h = sum(_row_h(r) for r in rows) + GAP * (len(rows) - 1)
     return w, h
 
 
@@ -207,25 +237,90 @@ def measure(bid, ents, children, node_size, geoms=None, depth=0):
     boundary = [c for c in inner if c.slot == "boundary"]
     b.geometry = (geoms or {}).get(bid)
 
-    cw, chh = _rows_extent(_rows_of(interior))
+    # A receptor on the edge is a drawing, not a captioned box: its name goes
+    # above the membrane where it cannot land on the cell it sits in, and the
+    # container reserves that band so the name does not collide with whatever
+    # the layout puts overhead.
+    for c in boundary:
+        c.label_mode = "outside"
+        c.spec["_label_mode"] = "outside"
+        c.spec["_label_side"] = "above"
+        if not c.is_container:
+            c.w, c.h = node_size(c.spec)
+    if boundary:
+        b.pad_top = TOP_CLEAR
+
+    # The asset's proportion constrains the layout only when the asset is
+    # what gets drawn. A container that falls back to neutral geometry has no
+    # shape to respect, and letting a tall narrow organ dictate the rows once
+    # stacked an entire figure into a single column.
+    g0 = (geoms or {}).get(bid) or {}
+    drawn0 = (g0.get("kind") == "frame"
+              or (g0.get("outline") and g0.get("inscribed_fraction", 0) >= 0.26))
+    nat0 = g0.get("natural_aspect") if drawn0 else None
+    def _fit(mode):
+        for c in interior:
+            c.label_mode = mode
+            c.spec["_label_mode"] = mode
+            if not c.is_container:
+                c.w, c.h = node_size(c.spec)
+        rws = _rows_of(interior, nat0)
+        return rws, _rows_extent(rws)
+
+    rows0, (cw, chh) = _fit("full")
     b.content = (0.0, 0.0, cw, chh)
+
+    def _needed(cw_, chh_):
+        bw_, bh_ = cw_ + 2 * PAD, chh_ + 2 * PAD + HEADER
+        if boundary:
+            bw_ = max(bw_, sum(c.w + GAP for c in boundary) - GAP + 2 * PAD)
+        return bw_, bh_
+
+    # Try the gentler label reductions until the drawing can stay its own
+    # size and shape. Moving text out is cheap; growing or deforming a
+    # biological outline is not.
+    if b.geometry and (b.geometry.get("outline") or b.geometry.get("kind") == "frame"):
+        reg = (b.geometry.get("frame_rect") if b.geometry.get("kind") == "frame"
+               else b.geometry.get("inscribed"))
+        if reg and reg[2] > 0.05 and reg[3] > 0.05:
+            for mode in LABEL_STEPS:
+                _, (cw, chh) = _fit(mode)
+                base_w, base_h = _needed(cw, chh)
+                nw, nh = cw / reg[2], chh / reg[3]
+                if max(nw / max(base_w, 1.0), nh / max(base_h, 1.0)) <= MAX_FRAME_GROWTH:
+                    break
+    cw, chh = _rows_extent(_rows_of(interior, nat0))
 
     bw = cw + 2 * PAD
     bh = chh + 2 * PAD + HEADER
     region = None
     if b.geometry and b.geometry.get("kind") == "frame":
         region = b.geometry.get("frame_rect")
-    elif b.geometry and b.geometry.get("inscribed_fraction", 0) >= 0.30:
+    elif b.geometry and b.geometry.get("inscribed_fraction", 0) >= 0.26:
         region = b.geometry.get("inscribed")
     if region:
         # Contents go inside the drawing, so the container is grown until the
         # measured empty middle can hold them, unless that costs too much.
         _, _, iw, ih = region
         if iw > 0.05 and ih > 0.05:
-            gw, gh = (cw / iw) / max(bw, 1.0), (chh / ih) / max(bh, 1.0)
+            need_w, need_h = cw / iw, chh / ih
+            # Keep the asset's own proportions. Scaling a path to whatever
+            # box the contents happen to need turns a macrophage into a flat
+            # smear, and a deformed biological shape is worse than a box.
+            nat = (b.geometry or {}).get("natural_aspect")
+            if nat and nat > 0:
+                # Hold the asset's proportion within a tolerance. An
+                # amoeboid cell survives a quarter of distortion unnoticed;
+                # forcing the exact ratio costs growth that buys nothing.
+                lo, hi = nat * 0.78, nat * 1.28
+                got = need_w / max(need_h, 1.0)
+                if got > hi:
+                    need_h = need_w / hi
+                elif got < lo:
+                    need_w = need_h * lo
+            gw, gh = need_w / max(bw, 1.0), need_h / max(bh, 1.0)
             if max(gw, gh) <= MAX_FRAME_GROWTH:
-                bw = max(bw, cw / iw)
-                bh = max(bh, chh / ih)
+                bw, bh = max(bw, need_w), max(bh, need_h)
             else:
                 b.geometry = dict(b.geometry or {}, kind="mark",
                                   inscribed_fraction=0.0, _demoted=True)
@@ -244,7 +339,10 @@ def place(b, x, y):
         return
     interior = [c for c in b.children if c.slot != "boundary"]
     boundary = [c for c in b.children if c.slot == "boundary"]
-    rows = _rows_of(interior)
+    g = b.geometry or {}
+    drawn = (g.get("kind") == "frame"
+             or (g.get("outline") and g.get("inscribed_fraction", 0) >= 0.26))
+    rows = _rows_of(interior, g.get("natural_aspect") if drawn else None)
     cw, ch = _rows_extent(rows)
 
     avail_y = y + HEADER
@@ -253,7 +351,7 @@ def place(b, x, y):
     if b.geometry and b.geometry.get("kind") == "frame":
         region = b.geometry.get("frame_rect")
         avail_y, avail_h = y, b.h      # a drawn frame carries its own label room
-    elif b.geometry and b.geometry.get("inscribed_fraction", 0) >= 0.30:
+    elif b.geometry and b.geometry.get("inscribed_fraction", 0) >= 0.26:
         region = b.geometry.get("inscribed")
         avail_y, avail_h = y, b.h
     if region:
@@ -271,18 +369,26 @@ def place(b, x, y):
         rw = sum(c.w for c in r) + GAP * (len(r) - 1)
         rx = cx0 + max(0.0, (cw - rw) / 2.0)
         for c in r:
-            place(c, rx, ry)
+            place(c, rx, ry + c.pad_top)
             rx += c.w + GAP
-        ry += max(c.h for c in r) + GAP
+        ry += _row_h(r) + GAP
 
-    # Boundary children straddle the top edge, which is where a reader expects
-    # a receptor or a port, spread evenly across the span.
+    # Boundary children straddle the edge, which is where a reader expects a
+    # receptor or a port. On a drawn container that edge is the silhouette,
+    # not the bounding box: the outline is sampled under each glyph so the
+    # receptor lands on the membrane instead of floating over the cell.
     if boundary:
         span = b.w - 2 * PAD
         step = span / len(boundary)
+        outline = g.get("outline") if drawn else None
         for i, c in enumerate(boundary):
             bx = b.x + PAD + step * (i + 0.5) - c.w / 2.0
-            place(c, bx, b.y - c.h * BOUNDARY_INSET)
+            top = b.y
+            if outline:
+                v = DERIVE.outline_edge(outline, (bx + c.w / 2.0 - b.x) / max(b.w, 1.0))
+                if v is not None:
+                    top = b.y + v * b.h
+            place(c, bx, top - c.h * BOUNDARY_INSET)
 
 
 def flatten(b, leaves, containers):

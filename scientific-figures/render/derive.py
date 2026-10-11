@@ -173,10 +173,106 @@ def analyse_svg(svg_text, side=180):
         "aspect": round(rw / max(rh, 1), 3),
         "mode": "frame" if frac >= FRAME_THRESHOLD else "anchor",
         "ink_fraction": round(float(mask.sum()) / (side * side), 4),
+        "natural_aspect": round(((x1 - x0 + 1) / max(y1 - y0 + 1, 1)), 3),
         "frame_fit": round(frame_fit, 4),
         "frame_rect": [round(v, 4) for v in frame_rect],
         "kind": "frame" if frame_fit >= FRAME_FIT_THRESHOLD else "mark",
     }
+
+
+def outline_path(svg_text, side=260, tol=1.6):
+    """The silhouette's outline as a path in normalised 0..1 coordinates.
+
+    This is the derivative that stops a container being wallpaper. A library
+    cell is a solid, dark drawing: to put a label on it you fade it, and a
+    faded drawing reads as decoration behind the diagram rather than as the
+    structure the diagram is about. Published figures never fade anything.
+    They draw the outline at full strength and leave the inside pale, so the
+    shape is the container and the contents sit in its lumen.
+
+    Taking the outline and discarding the fill is exactly that, derived per
+    asset with no drawing by hand, and it is a derivative work the licence
+    gate already permits and the store records.
+    """
+    try:
+        import io
+        import numpy as np
+        import cairosvg
+        from PIL import Image
+        from scipy.ndimage import binary_closing, binary_fill_holes
+        from skimage import measure
+    except ImportError:
+        return None
+    try:
+        png = cairosvg.svg2png(bytestring=svg_text.encode("utf-8"),
+                               output_width=side, output_height=side,
+                               background_color="white")
+        ink = np.array(Image.open(io.BytesIO(png)).convert("L")) < 245
+    except Exception:
+        return None
+    solid = binary_fill_holes(binary_closing(ink, np.ones((3, 3))))
+    if solid.sum() < 50:
+        solid = ink
+    if solid.sum() < 50:
+        return None
+    contours = measure.find_contours(solid.astype(float), 0.5)
+    if not contours:
+        return None
+    c = max(contours, key=len)
+    simp = measure.approximate_polygon(c, tolerance=tol)
+    if len(simp) < 6:
+        return None
+    pts = [(float(x) / side, float(y) / side) for y, x in simp]
+    d = "M" + " L".join(f"{x:.4f},{y:.4f}" for x, y in pts) + " Z"
+    return {"d": d, "points": len(pts), "area": round(float(solid.sum()) / (side * side), 4)}
+
+
+def scale_path(d, x, y, w, h):
+    """Place a normalised outline path into the figure."""
+    out = []
+    for token in d.replace("M", " M ").replace("L", " L ").replace("Z", " Z").split():
+        if token in ("M", "L", "Z"):
+            out.append(token)
+            continue
+        px, py = token.split(",")
+        out.append(f"{x + float(px) * w:.1f},{y + float(py) * h:.1f}")
+    return " ".join(out)
+
+
+def outline_points(outline):
+    """The normalised vertices of a stored outline, parsed back from its path.
+
+    Read from the path rather than stored alongside it, so a cached geometry
+    written by an earlier version answers this question too.
+    """
+    if not outline or not outline.get("d"):
+        return []
+    pts = []
+    for token in outline["d"].replace("M", " ").replace("L", " ").replace("Z", " ").split():
+        try:
+            px, py = token.split(",")
+            pts.append((float(px), float(py)))
+        except ValueError:
+            continue
+    return pts
+
+
+def outline_edge(outline, u, window=0.08):
+    """Normalised height of the silhouette's upper edge near normalised x=u.
+
+    A boundary protein belongs on the membrane, and on an amoeboid cell the
+    membrane is nowhere near the top of the bounding box: a macrophage's
+    pseudopodia leave the middle of that edge empty, so a receptor placed
+    there floats above the cell it is supposed to sit in. Sampling the
+    outline puts it where the reader expects it, on the edge itself.
+    """
+    pts = outline_points(outline)
+    if not pts:
+        return None
+    near = [v for (uu, v) in pts if abs(uu - u) <= window]
+    if not near:
+        near = [v for (uu, v) in sorted(pts, key=lambda p: abs(p[0] - u))[:3]]
+    return min(near) if near else None
 
 
 def geometry_for(asset, svg_text):
@@ -192,6 +288,9 @@ def geometry_for(asset, svg_text):
     g = analyse_svg(svg_text)
     if g is None:
         return None
+    o = outline_path(svg_text)
+    if o:
+        g["outline"] = o
     g["source"] = {k: asset.get(k) for k in ("source_id", "asset_id", "license", "author", "url")}
     try:
         with open(path, "w", encoding="utf-8") as fh:

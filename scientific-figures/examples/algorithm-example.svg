@@ -1,47 +1,49 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 631 712" width="178.0mm" height="200.8mm" font-family="Helvetica, Arial, sans-serif">
-<rect x="0" y="0" width="631" height="588" fill="#ffffff"/>
-<path d="M315.5,84.0 L315.5,104.0 L315.5,104.0 L315.5,124.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(315.5,138.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
-<path d="M315.5,178.0 L315.5,198.0 L315.5,198.0 L315.5,218.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(315.5,232.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
-<path d="M315.5,272.0 L315.5,292.0 L172.9,292.0 L172.9,312.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(172.9,326.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
-<text x="178.9" y="288.0" font-size="12.0" text-anchor="middle" fill="#8e8e8e">low</text>
-<path d="M315.5,272.0 L315.5,292.0 L493.4,292.0 L493.4,312.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(493.4,326.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
-<text x="499.4" y="288.0" font-size="12.0" text-anchor="middle" fill="#8e8e8e">intermediate or high</text>
-<path d="M493.4,366.0 L493.4,386.0 L315.5,386.0 L315.5,406.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(315.5,420.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
-<path d="M315.5,460.0 L315.5,480.0 L315.5,480.0 L315.5,500.0" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
-<g transform="translate(315.5,514.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3"/></g>
-<path d="M209.4,44.0 h225.2 v40.0 h-225.2 l-13,-20.0 z" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
-<text x="315.5" y="69.4" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Unexplained dyspnoea in MPN</text>
-<rect x="192.6" y="138.0" width="246.0" height="40.0" rx="4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
-<text x="315.5" y="163.4" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Transthoracic echocardiography</text>
-<rect x="200.2" y="232.0" width="230.7" height="40.0" rx="3" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/><path d="M257.9,272.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/><path d="M315.5,272.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/><path d="M373.2,272.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/>
-<text x="315.5" y="257.4" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Echocardiographic probability</text>
-<rect x="34.0" y="326.0" width="277.8" height="40.0" rx="4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
-<text x="172.9" y="351.4" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Low probability: seek another cause</text>
-<rect x="389.8" y="326.0" width="207.3" height="40.0" rx="4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
-<text x="493.4" y="351.4" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Right heart catheterisation</text>
-<rect x="191.3" y="420.0" width="248.4" height="40.0" rx="3" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/><path d="M253.4,460.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/><path d="M315.5,460.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/><path d="M377.6,460.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/>
-<text x="315.5" y="445.4" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Mean pulmonary artery pressure</text>
-<path d="M195.3,514.0 h253.4 v40.0 h-253.4 l-13,-20.0 z" fill="#ffffff" stroke="#0b6ea8" stroke-width="2.6"/>
-<text x="315.5" y="539.4" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Pulmonary hypertension confirmed</text>
-<line x1="34.0" y1="594.0" x2="597.1" y2="594.0" stroke="#dddddd" stroke-width="1"/>
-<path d="M34.0,615.0 L68.0,615.0 L68.0,622.0 L88.0,622.0" fill="none" stroke="#1a1a1a" stroke-width="2.0"/>
-<g transform="translate(102.0,622.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
-<text x="118.0" y="627.1" font-size="12.3" fill="#1a1a1a">procedural flow</text>
-<line x1="34.0" y1="648.0" x2="88.0" y2="648.0" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(102.0,648.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
-<text x="118.0" y="653.1" font-size="12.3" fill="#1a1a1a">established (cited)</text>
-<line x1="34.0" y1="674.0" x2="88.0" y2="674.0" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
-<g transform="translate(102.0,674.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
-<text x="118.0" y="679.1" font-size="12.3" fill="#1a1a1a">demonstrated here</text>
-<line x1="315.5" y1="622.0" x2="369.5" y2="622.0" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round"/>
-<g transform="translate(383.5,622.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
-<text x="399.5" y="627.1" font-size="12.3" fill="#1a1a1a">canonical background</text>
-<line x1="315.5" y1="648.0" x2="369.5" y2="648.0" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round"/>
-<g transform="translate(383.5,648.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3"/></g>
-<text x="399.5" y="653.1" font-size="12.3" fill="#1a1a1a">contribution of this work</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 586 754" width="178.0mm" height="229.0mm" font-family="Helvetica, Arial, sans-serif">
+<rect x="0" y="0" width="586" height="754" fill="#ffffff"/>
+<path d="M293.0,84.0 L293.0,104.0 L293.0,104.0 L293.0,124.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(293.0,138.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<path d="M293.0,178.0 L293.0,198.0 L293.0,198.0 L293.0,218.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(293.0,232.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<path d="M293.0,272.0 L293.0,292.0 L150.4,292.0 L150.4,312.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(150.4,326.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<text x="156.4" y="288.0" font-size="12.0" text-anchor="middle" fill="#8e8e8e">low</text>
+<path d="M293.0,272.0 L293.0,292.0 L448.4,292.0 L448.4,312.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(448.4,326.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<text x="454.4" y="288.0" font-size="12.0" text-anchor="middle" fill="#8e8e8e">intermediate or high</text>
+<path d="M448.4,366.0 L448.4,396.5 L293.0,396.5 L293.0,427.0" fill="none" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(293.0,441.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<path d="M293.0,481.0 L293.0,501.0 L293.0,501.0 L293.0,521.0" fill="none" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round" stroke-linejoin="round"/>
+<g transform="translate(293.0,535.0) rotate(90.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3"/></g>
+<path d="M186.9,44.0 h225.2 v40.0 h-225.2 l-13,-20.0 z" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
+<text x="293.0" y="69.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Unexplained dyspnoea in MPN</text>
+<rect x="170.1" y="138.0" width="246.0" height="40.0" rx="4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
+<text x="293.0" y="163.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Transthoracic echocardiography</text>
+<rect x="177.7" y="232.0" width="230.7" height="40.0" rx="3" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/><path d="M235.4,272.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/><path d="M293.0,272.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/><path d="M350.7,272.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="293.0" y="257.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Echocardiographic probability</text>
+<rect x="34.0" y="326.0" width="232.8" height="61.0" rx="4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
+<text x="150.4" y="351.5" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Low probability: seek another</text>
+<text x="150.4" y="371.7" font-size="15.0" text-anchor="middle" fill="#1a1a1a">cause</text>
+<rect x="344.8" y="326.0" width="207.3" height="40.0" rx="4" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/>
+<text x="448.4" y="351.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Right heart catheterisation</text>
+<rect x="168.8" y="441.0" width="248.4" height="40.0" rx="3" fill="#ffffff" stroke="#1a1a1a" stroke-width="2.0"/><path d="M230.9,481.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/><path d="M293.0,481.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/><path d="M355.1,481.0 v-5" stroke="#1a1a1a" stroke-width="1.6"/>
+<text x="293.0" y="466.1" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Mean pulmonary artery pressure</text>
+<path d="M209.0,535.0 h181.1 v61.0 h-181.1 l-13,-30.5 z" fill="#ffffff" stroke="#0b6ea8" stroke-width="2.6"/>
+<text x="293.0" y="560.5" font-size="15.0" text-anchor="middle" fill="#1a1a1a">Pulmonary hypertension</text>
+<text x="293.0" y="580.7" font-size="15.0" text-anchor="middle" fill="#1a1a1a">confirmed</text>
+<line x1="34.0" y1="636.0" x2="552.1" y2="636.0" stroke="#dddddd" stroke-width="1"/>
+<path d="M34.0,657.0 L68.0,657.0 L68.0,664.0 L88.0,664.0" fill="none" stroke="#1a1a1a" stroke-width="2.0"/>
+<g transform="translate(102.0,664.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<text x="118.0" y="669.1" font-size="12.3" fill="#1a1a1a">procedural flow</text>
+<line x1="34.0" y1="690.0" x2="88.0" y2="690.0" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
+<g transform="translate(102.0,690.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<text x="118.0" y="695.1" font-size="12.3" fill="#1a1a1a">established (cited)</text>
+<line x1="34.0" y1="716.0" x2="88.0" y2="716.0" stroke="#1a1a1a" stroke-width="2.0" stroke-linecap="round"/>
+<g transform="translate(102.0,716.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#1a1a1a" stroke="#1a1a1a" stroke-width="1.6"/></g>
+<text x="118.0" y="721.1" font-size="12.3" fill="#1a1a1a">demonstrated here</text>
+<line x1="293.0" y1="664.0" x2="347.0" y2="664.0" stroke="#8e8e8e" stroke-width="1.7" stroke-linecap="round"/>
+<g transform="translate(361.0,664.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#8e8e8e" stroke="#8e8e8e" stroke-width="1.4"/></g>
+<text x="377.0" y="669.1" font-size="12.3" fill="#1a1a1a">canonical background</text>
+<line x1="293.0" y1="690.0" x2="347.0" y2="690.0" stroke="#0b6ea8" stroke-width="2.9" stroke-linecap="round"/>
+<g transform="translate(361.0,690.0) rotate(0.0)"><path d="M0,0 L-13,-6 L-13,6 Z" fill="#0b6ea8" stroke="#0b6ea8" stroke-width="2.3"/></g>
+<text x="377.0" y="695.1" font-size="12.3" fill="#1a1a1a">contribution of this work</text>
 </svg>

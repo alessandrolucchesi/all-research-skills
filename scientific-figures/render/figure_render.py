@@ -282,7 +282,8 @@ class Node:
         self.comp = e.get("compartment")
         self.role = e.get("role", "canonical")
         self.spec = e
-        self.qualifier = e.get("qualifier") or ""
+        mode = e.get("_label_mode", "full")
+        self.qualifier = "" if mode != "full" else (e.get("qualifier") or "")
         self.has_icon = bool(e.get("asset", {}).get("_svg"))
         self.depicted = bool(e.get("_depicted")) and self.has_icon
         # A pictorial entity always gets icon room: with a resolved asset it
@@ -292,7 +293,7 @@ class Node:
         # Wrap: a published algorithm box carries far more than three words
         # (the BJH thrombocytosis algorithm runs to about twenty-five), so a
         # label is wrapped rather than allowed to set the column width.
-        self.lines = wrap_label(self.label, max_chars)
+        self.lines = [] if mode == "outside" else wrap_label(self.label, max_chars)
         self.qlines = wrap_label(self.qualifier, int(max_chars * 1.25)) if self.qualifier else []
         ef = font * pf
         tw = max([text_width(l, ef) for l in self.lines] +
@@ -301,6 +302,18 @@ class Node:
             self.w = max(NODE_MIN_W, PROCESS_SIDE + 10.0 + tw + 24.0)
         else:
             self.w = max(NODE_MIN_W, tw + 30.0 * ppad)
+        if mode == "outside":
+            # Only the glyph stays inside; the name goes out with a leader.
+            # The glyph keeps the drawing's own proportion: a membrane
+            # receptor is a wide shallow strip, and squeezing it into a
+            # square box renders it as a smudge the reader cannot identify.
+            self.h = ICON_H * 1.05
+            ar = 1.0
+            a = e.get("asset") or {}
+            if a.get("_svg"):
+                ar = (DERIVE.geometry_for(a, a["_svg"]) or {}).get("natural_aspect") or 1.0
+            self.w = max(42.0, self.h * min(max(ar, 0.55), 3.2))
+            return
         body = max(NODE_H, ef * 1.5 * len(self.lines) + ef * 1.15 * len(self.qlines) + 16.0)
         if self.depicted:
             # A drawing with a label under it: no box, so no padding for one,
@@ -431,13 +444,23 @@ def layout_anatomical(spec, gutter=GUTTER, font=BASE_FONT):
     # Geometry before sizing: in frame mode the container has to be grown
     # until the measured inscribed region can hold its contents, so the
     # measurement cannot wait until after the box exists.
+    # A container that holds other containers is a region, not a drawing.
+    # Its job is to say where all this happens, and giving it the outline of
+    # an organ forces the whole figure into that organ's proportions: a
+    # spleen drawn around two cells stacked the figure into one tall column.
+    # A container whose children are all leaves is drawn, which is what the
+    # published figures do: the cell is drawn and holds molecules.
     geoms = {}
     for eid, e in ents.items():
         a = e.get("anchor") or {}
-        if a.get("_svg"):
-            g = DERIVE.geometry_for(a, a["_svg"])
-            if g:
-                geoms[eid] = g
+        if not a.get("_svg"):
+            continue
+        holds_container = any(bool(children.get(k)) for k in children.get(eid, []))
+        if holds_container and e.get("depiction") != "pictogram":
+            continue
+        g = DERIVE.geometry_for(a, a["_svg"])
+        if g:
+            geoms[eid] = g
     boxes = [SPATIAL.measure(r, ents, children, node_size, geoms) for r in roots]
 
     x = MARGIN
@@ -468,6 +491,7 @@ def layout_anatomical(spec, gutter=GUTTER, font=BASE_FONT):
             x=cb.x, y=cb.y, w=cb.w, h=cb.h,
             type=cb.spec.get("_ctype", "physical"),
             label=cb.spec.get("label", cb.id),
+            parent=cb.spec.get("_parent"),
             depth=0 if cb.spec.get("_parent") is None else 1,
             shape=container_shape_for(cls, cb.geometry),
             has_boundary=any(c.slot == "boundary" for c in cb.children),
@@ -601,7 +625,8 @@ def layout_horizontal(spec, gutter=GUTTER, font=BASE_FONT):
         y1 = max(p[3] for p in parts) + pad
         r = dict(x=x0, y=y0, w=x1 - x0, h=y1 - y0,
                  type=comp_by_id[cid].get("type", "physical"),
-                 label=comp_by_id[cid].get("label", cid), depth=depth)
+                 label=comp_by_id[cid].get("label", cid), depth=depth,
+                 parent=comp_by_id[cid].get("parent"))
         rects[cid] = r
         return r
 
@@ -862,15 +887,75 @@ def seg_hits_node(x1, y1, x2, y2, node, pad=8.0):
     return True
 
 
-def clear_lane(a, b, nodes, below=True):
+class Obstacle:
+    """A container presented to the router as something to go around.
+
+    An arc is not free to cross any structure it likes. Crossing the membrane
+    of the cell it starts in is what a mechanism arc does; crossing a third
+    cell on the way past says that the signal went through that cell, which
+    is a claim the specification never made. Containers therefore enter the
+    router as obstacles, except the ones that contain an endpoint.
+    """
+    __slots__ = ("x", "y", "w", "h", "id")
+
+    def __init__(self, cid, r, inset=0.0):
+        self.id = cid
+        self.x, self.y = r["x"] + inset, r["y"] + inset
+        self.w, self.h = r["w"] - 2 * inset, r["h"] - 2 * inset
+
+
+def containment_router(nodes, rects):
+    """Return (obstacles_for, bounds_for) closed over the containment tree."""
+    # The flow engines carry containment on `compartment` and the anatomical
+    # engine on the tree it built; either way it is the same question, and
+    # reading only one of them once made every compartment an obstacle to
+    # every arc and routed a whole figure into lanes below itself.
+    parent = {}
+    for n in nodes:
+        parent[n.id] = (n.spec.get("_parent") or n.spec.get("inside")
+                        or n.spec.get("compartment"))
+    for cid, r in rects.items():
+        parent[cid] = r.get("parent")
+
+    def chain(eid):
+        out, p, guard = [], parent.get(eid), 0
+        while p and guard < 12:
+            out.append(p)
+            p, guard = parent.get(p), guard + 1
+        return out
+
+    def obstacles_for(a, b):
+        spare = set(chain(a.id)) | set(chain(b.id)) | {a.id, b.id}
+        obs = [n for n in nodes if n is not a and n is not b]
+        obs += [Obstacle(cid, r, inset=2.0)
+                for cid, r in rects.items() if cid not in spare]
+        return obs
+
+    def bounds_for(a, b):
+        """The innermost structure holding both ends. An arc between two
+        entities in one compartment belongs inside that compartment; sending
+        it around the outside says it left the tissue."""
+        ca, cb = chain(a.id), set(chain(b.id))
+        for cid in ca:
+            if cid in cb and cid in rects:
+                r = rects[cid]
+                return (r["y"] + 12.0, r["y"] + r["h"] - 12.0,
+                        r["x"] + 12.0, r["x"] + r["w"] - 12.0)
+        return None
+
+    return obstacles_for, bounds_for
+
+
+def clear_lane(a, b, others, below=True, bounds=None):
     """Find a lane between a and b that no other glyph occupies.
 
     The whole route is tested, not just the horizontal run: the two vertical
     drops that join the lane to its endpoints cross the same space, and a
     feedback arc was passing straight through a process glyph that sat
     directly under its origin.
+
+    `bounds` keeps the lane inside the structure that holds both ends.
     """
-    others = [n for n in nodes if n is not a and n is not b]
     edge_a = (a.y + a.h) if below else a.y
     edge_b = (b.y + b.h) if below else b.y
     lane = (max(a.y + a.h, b.y + b.h) + 30.0) if below else (min(a.y, b.y) - 30.0)
@@ -878,13 +963,56 @@ def clear_lane(a, b, nodes, below=True):
     lo, hi = min(a.cx, b.cx), max(a.cx, b.cx)
     start = lane
     for _ in range(10):
+        if bounds and not (bounds[0] <= lane <= bounds[1]):
+            return lane, float("inf")
         clash = (any(seg_hits_node(lo, lane, hi, lane, n, pad=6.0) for n in others)
                  or any(seg_hits_node(a.cx, edge_a, a.cx, lane, n, pad=4.0) for n in others)
                  or any(seg_hits_node(b.cx, edge_b, b.cx, lane, n, pad=4.0) for n in others))
         if not clash:
             return lane, abs(lane - start)
         lane += stride
-    return lane, abs(lane - start)
+    return lane, float("inf") if bounds else abs(lane - start)
+
+
+def clear_column(a, b, others, xbounds=None):
+    """A vertical corridor joining two glyphs, for the case both horizontal
+    lanes are walled in.
+
+    Between two cells the free space is often a column rather than a band,
+    and the whole dog-leg is tested, not just the column: out of one glyph at
+    its own height, along the corridor, in at the other's. The corridor is
+    not restricted to the gap between the two glyphs, because the structure
+    in the way frequently fills exactly that gap; a channel past its edge is
+    a shorter and more honest route than a line drawn through it.
+    """
+    lo, hi = min(a.cy, b.cy), max(a.cy, b.cy)
+    xa = (a.x + a.w) if a.cx <= b.cx else a.x
+    xb = b.x if a.cx <= b.cx else (b.x + b.w)
+    mid = (xa + xb) / 2.0
+
+    cand = [mid]
+    span = abs(xb - xa)
+    for f in (0.2, -0.2, 0.36, -0.36):
+        cand.append(mid + span * f)
+    # Channels immediately past whatever stands in the way.
+    for n in others:
+        cand.append(n.x - 15.0)
+        cand.append(n.x + n.w + 15.0)
+
+    best, best_cost = None, float("inf")
+    for cx in cand:
+        if xbounds and not (xbounds[0] <= cx <= xbounds[1]):
+            continue
+        if any(seg_hits_node(cx, lo, cx, hi, n, pad=5.0) for n in others):
+            continue
+        if any(seg_hits_node(xa, a.cy, cx, a.cy, n, pad=5.0) for n in others):
+            continue
+        if any(seg_hits_node(cx, b.cy, xb, b.cy, n, pad=5.0) for n in others):
+            continue
+        cost = abs(cx - mid)
+        if cost < best_cost:
+            best, best_cost = cx, cost
+    return best, best_cost
 
 
 def head(kind, x, y, angle, colour, sw, filled=True):
@@ -1058,22 +1186,24 @@ def render(spec, variant="journal"):
         if r.get("shape"):
             tint = COMPARTMENT_TINT[min(r["depth"], len(COMPARTMENT_TINT) - 1)]
             geo0 = r.get("geometry") or {}
-            if not (DERIVE.is_frame(geo0) or geo0.get("inscribed_fraction", 0) >= 0.30):
+            has_drawn = (DERIVE.is_frame(geo0)
+                         or (geo0.get("outline") and geo0.get("inscribed_fraction", 0) >= 0.26))
+            if not has_drawn:
                 out.append(container_path(r["shape"], r["x"], r["y"], r["w"], r["h"],
                                           tint if r["type"] == "physical" else "none",
                                           INK, sw, dashed=r["type"] != "physical"))
             anc = r.get("anchor") or {}
             geo = r.get("geometry") or {}
-            if (anc.get("_svg") and not DERIVE.is_frame(geo)
-                    and geo.get("inscribed_fraction", 0) >= 0.30):
-                # A solid drawing used as the container body: pale enough for
-                # the contents to read on top, strong enough to be the cell
-                # rather than a ghost behind a neutral blob.
-                out.append(f'<g opacity="0.42" color="#5a6a76">'
-                           + embed_svg(desaturate_svg(anc["_svg"], keep=0.30),
-                                       r["x"], r["y"], r["w"], r["h"],
-                                       "bod" + re.sub(r"[^A-Za-z0-9]", "", cid))
-                           + '</g>')
+            outline = geo.get("outline")
+            if outline and geo.get("inscribed_fraction", 0) >= 0.26:
+                # The outline IS the container: stroked at full strength,
+                # filled pale, contents in its lumen. Fading the whole drawing
+                # so a label could sit on it is what made a cell read as
+                # wallpaper rather than as the structure being explained.
+                tint = COMPARTMENT_TINT[min(r["depth"], len(COMPARTMENT_TINT) - 1)]
+                d = DERIVE.scale_path(outline["d"], r["x"], r["y"], r["w"], r["h"])
+                out.append(f'<path d="{d}" fill="{tint}" stroke="{INK}" '
+                           f'stroke-width="{sw*1.15:.1f}" stroke-linejoin="round"/>')
             elif DERIVE.is_frame(geo) and anc.get("_svg"):
                 # A frame asset is the container: drawn at full strength, with
                 # the contents in the empty middle the measurement found.
@@ -1082,9 +1212,11 @@ def render(spec, variant="journal"):
                                        r["w"], r["h"],
                                        "frm" + re.sub(r"[^A-Za-z0-9]", "", cid))
                            + '</g>')
-            elif anc.get("_svg"):
-                # Background, never a participant: faint, desaturated, and
-                # unreachable by any relation.
+            elif anc.get("_svg") and (anc.get("style") == "wash"):
+                # Only on request. A faint silhouette behind the contents
+                # reads as an ornament on the background rather than as the
+                # structure the figure is explaining, which is the whole
+                # reason the outline treatment exists.
                 body, op = DERIVE.anchor_svg(desaturate_svg(anc["_svg"]))
                 out.append(f'<g opacity="{op}" color="#4a5a66">'
                            + embed_svg(body, r["x"], r["y"] + 10, r["w"], r["h"] - 14,
@@ -1092,7 +1224,11 @@ def render(spec, variant="journal"):
                            + '</g>')
             # A blob has no top-left corner to put a label in, so it is set
             # centred above the curve; a rectangle keeps the corner.
-            if r["shape"] == "blob":
+            if outline and geo.get("inscribed_fraction", 0) >= 0.26:
+                out.append(f'<text x="{r["x"] + r["w"]/2:.1f}" y="{r["y"] + r["h"] + 15:.1f}" '
+                           f'font-size="{font*0.8:.1f}" text-anchor="middle" '
+                           f'fill="{LABEL_MUTED}" letter-spacing="0.5">{esc(r["label"].upper())}</text>')
+            elif r["shape"] == "blob":
                 # Centred above is where a boundary child sits, so a container
                 # that has one moves its label aside rather than under it.
                 if r.get("has_boundary"):
@@ -1118,6 +1254,7 @@ def render(spec, variant="journal"):
                    f'fill="{LABEL_MUTED}" letter-spacing="0.6">{esc(r["label"].upper())}</text>')
 
     # relations under the nodes
+    obstacles_for, bounds_for = containment_router(nodes, rects)
     for rel in spec.get("relations", []):
         a, b = by_id.get(rel["from"]), by_id.get(rel["to"])
         if not a or not b:
@@ -1147,24 +1284,53 @@ def render(spec, variant="journal"):
         # another glyph, not merely when the arc runs backwards. A rank-span
         # rule would miss a long arc that happens to pass over a node and
         # divert a short one that passes over nothing.
-        blocked = any(seg_hits_node(x1, y1, ex, ey, n)
-                      for n in nodes if n is not a and n is not b)
+        obstacles = obstacles_for(a, b)
+        blocked = any(seg_hits_node(x1, y1, ex, ey, n) for n in obstacles)
         back_edge = b.rank < a.rank
+        detour = None
         if kind != "flow" and (back_edge or blocked):
-            # Feedback below, long forward arcs above, so the two stay
-            # distinguishable. Fall back to below if the upper lane would
-            # leave the canvas.
-            # Try both sides and take the shorter detour. Committing to one
-            # side and pushing until it clears drags the arc far past the
-            # figure and leaves a void the size of the excursion.
-            lane_lo, cost_lo = clear_lane(a, b, nodes, below=True)
-            lane_hi, cost_hi = clear_lane(a, b, nodes, below=False)
+            bnd = bounds_for(a, b)
+            ybnd = bnd[:2] if bnd else None
+            lane_lo, cost_lo = clear_lane(a, b, obstacles, below=True, bounds=ybnd)
+            lane_hi, cost_hi = clear_lane(a, b, obstacles, below=False, bounds=ybnd)
             if lane_hi < 16.0:
                 cost_hi = float("inf")
             if back_edge:
-                cost_lo -= 18.0        # feedback reads better underneath
-            below = cost_lo <= cost_hi
-            lane = lane_lo if below else lane_hi
+                cost_lo -= 18.0
+            col, cost_col = clear_column(a, b, obstacles, bnd[2:] if bnd else None)
+            if min(cost_lo, cost_hi) == float("inf") and cost_col < float("inf"):
+                detour = ("column", col)
+            elif min(cost_lo, cost_hi) < float("inf"):
+                detour = ("lane", lane_lo if cost_lo <= cost_hi else lane_hi,
+                          cost_lo <= cost_hi)
+        if detour and detour[0] == "column":
+            # Out of one side, across the corridor, into the other.
+            cx = detour[1]
+            x1, y1 = ((a.x + a.w) if cx >= a.cx else a.x), a.cy
+            if abs(cx - b.cx) <= b.w / 2.0:
+                # The corridor lands over or under the target, so the arc
+                # comes in vertically instead of doubling back.
+                from_above = y1 < b.cy
+                y2 = b.y if from_above else b.y + b.h
+                x2, ex = cx, cx
+                ey = y2 - shrink if from_above else y2 + shrink
+                ang = math.pi / 2.0 if from_above else -math.pi / 2.0
+                d = f"M{x1:.1f},{y1:.1f} L{cx:.1f},{y1:.1f} L{cx:.1f},{ey:.1f}"
+            else:
+                x2, y2 = (b.x if cx < b.cx else b.x + b.w), b.cy
+                rightward = x2 >= cx
+                ex = x2 - shrink if rightward else x2 + shrink
+                ey = y2
+                ang = 0.0 if rightward else math.pi
+                d = (f"M{x1:.1f},{y1:.1f} L{cx:.1f},{y1:.1f} "
+                     f"L{cx:.1f},{y2:.1f} L{ex:.1f},{y2:.1f}")
+            label_at = (cx + 6.0, (y1 + y2) / 2.0 - 4.0)
+        elif detour and detour[0] == "lane":
+            # Feedback below, long forward arcs above, so the two stay
+            # distinguishable. Both sides are costed and the shorter detour
+            # wins: committing to one side and pushing until it clears drags
+            # the arc past the figure and leaves a void the size of it.
+            _, lane, below = detour
             x1, x2, ex = a.cx, b.cx, b.cx
             if below:
                 y1, y2 = a.y + a.h, b.y + b.h
@@ -1218,6 +1384,58 @@ def render(spec, variant="journal"):
             out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="{font*0.8:.1f}" text-anchor="middle" '
                        f'fill="{colour}">{esc(rel["label"])}</text>')
 
+    # Labels that moved out of their container: stacked beside it, each tied
+    # to its glyph by a thin leader. The drawing keeps its size and shape and
+    # the text is still readable, which is what a published figure does.
+    externals = {}
+    above = []
+    for n in nodes:
+        if n.spec.get("_label_mode") != "outside":
+            continue
+        if n.spec.get("_label_side") == "above":
+            above.append(n)
+        else:
+            externals.setdefault(n.spec.get("_parent"), []).append(n)
+
+    # A membrane protein is named above the membrane. The names are laid out
+    # left to right and pushed apart where two receptors sit close together,
+    # so the band over a cell reads as a row of labels and not as a pile.
+    placed = []
+    for n in sorted(above, key=lambda m: m.cx):
+        half = text_width(n.label, font * 0.9) / 2.0
+        cx = n.cx
+        for pcx, phalf in placed:
+            if abs(cx - pcx) < half + phalf + 8.0:
+                cx = pcx + phalf + half + 8.0
+        placed.append((cx, half))
+        ly = n.y - 7.0
+        out.append(f'<text x="{cx:.1f}" y="{ly:.1f}" font-size="{font*0.9:.1f}" '
+                   f'text-anchor="middle" fill="{INK}">{esc(n.label)}</text>')
+        if abs(cx - n.cx) > 2.0:
+            out.append(f'<path d="M{n.cx:.1f},{n.y - 2.0:.1f} L{cx:.1f},{ly - font*0.32:.1f}" '
+                       f'fill="none" stroke="{CANONICAL}" stroke-width="{sw*0.5:.1f}"/>')
+        width = max(width, cx + half + MARGIN)
+
+    for pid, group in externals.items():
+        r = rects.get(pid)
+        if not r:
+            continue
+        lx = r["x"] + r["w"] + 16.0
+        ly = r["y"] + 26.0
+        for n in sorted(group, key=lambda m: m.y):
+            colour, _ = pal.entity(n.spec, n.role)
+            out.append(f'<path d="M{n.cx:.1f},{n.cy:.1f} L{lx-6:.1f},{ly-4:.1f}" '
+                       f'fill="none" stroke="{CANONICAL}" stroke-width="{sw*0.55:.1f}"/>')
+            out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="{font*0.92:.1f}" '
+                       f'fill="{INK}">{esc(n.label)}</text>')
+            ly += font * 1.15
+            if n.spec.get("qualifier"):
+                out.append(f'<text x="{lx:.1f}" y="{ly:.1f}" font-size="{font*0.74:.1f}" '
+                           f'fill="#6b7780">{esc(n.spec["qualifier"])}</text>')
+                ly += font * 1.05
+            ly += font * 0.5
+            width = max(width, lx + text_width(n.label, font * 0.92) + MARGIN)
+
     # entities
     for n in nodes:
         colour, fill = pal.entity(n.spec, n.role)
@@ -1234,8 +1452,10 @@ def render(spec, variant="journal"):
             ink = pal.icon_ink(n.spec, n.role)
             if not pal.keep_icon_colour(n.role):
                 art = desaturate_svg(art)
+            # With the name outside, the whole node is the drawing.
+            ih = (n.h - 4.0) if n.spec.get("_label_mode") == "outside" else ICON_H - 6
             out.append(f'<g color="{ink}">'
-                       + embed_svg(art, n.x + 4, n.y + 4, n.w - 8, ICON_H - 6,
+                       + embed_svg(art, n.x + 4, n.y + 2, n.w - 8, ih,
                                    re.sub(r"[^A-Za-z0-9]", "", n.id))
                        + '</g>')
         elif n.pictorial:
